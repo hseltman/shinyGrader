@@ -2,13 +2,18 @@
 
 # Shiny User Interface for "shinyGrader" app
 
+library(shiny)
+library(shinyjs)
+
 fluidPage(
+  useShinyjs(),
   titlePanel("shinyGrader"),
   
   tabsetPanel(
     
     tabPanel("Setup",
       p("Choose a directory"),
+      p(id="rosterEmailCol"),
       p("unzip"),
       p("Choose assignment components")
     ), # end "Setup" tabPanel
