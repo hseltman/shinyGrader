@@ -76,7 +76,7 @@ GLOBAL_CONFIG_IDS = list(
 GLOBAL_CONFIG_DEFAULTS = list(
   assignmentFilenames = "*.RRmd",
   courseId = "",
-  emailSuffix = "@andrew.cmu.edu",
+  emailSuffix = "",
   rosterRE = "Canvas",
   rosterIdCol = "Canvas",
   rosterNameCol = "Canvas",
@@ -404,29 +404,29 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
 
 
 # Get current global configuration
-globalConfig = initializeGlobalConfig()
-
-roster = getRoster("36602")
-roster = getRoster(globalConfig[["courseId"]])
-
-# Get current list of codefiles
-codefiles = strsplit(globalConfig[["assignmentFilenames"]], ";")[[1]]
+# globalConfig = initializeGlobalConfig()
+# 
+# roster = getRoster("36602")
+# browser()
+# roster = getRoster(globalConfig[["courseId"]])
+# 
+# # Get current list of codefiles
+# codefiles = strsplit(globalConfig[["assignmentFilenames"]], ";")[[1]]
 
 # Add individual codefiles when "*" is in codefiles
-starLocs = grep("[*]", codefiles)
-browser()
-if (length(starLocs) > 0) {
-  stars = codefiles[starLocs]
-  nonStar = setdiff(codefiles, stars)
-  for (one in stars) {
-    if (! one %in% ALLOWED_STARS) {
-      warning("global config, 'codefiles' choice of ", one,
-              " is not recognized")
-    } else {
-      files = parseFilenames("%f.%e")
-      if (one == "*.RRmd") continue
-    }
-  }
-}
+# starLocs = grep("[*]", codefiles)
+# if (length(starLocs) > 0) {
+#   stars = codefiles[starLocs]
+#   nonStar = setdiff(codefiles, stars)
+#   for (one in stars) {
+#     if (! one %in% ALLOWED_STARS) {
+#       warning("global config, 'codefiles' choice of ", one,
+#               " is not recognized")
+#     } else {
+#       files = parseFilenames("%f.%e")
+#       if (one == "*.RRmd") continue
+#     }
+#   }
+# }
 
 

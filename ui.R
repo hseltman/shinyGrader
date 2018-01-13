@@ -12,8 +12,11 @@ fluidPage(
   tabsetPanel(
     
     tabPanel("Setup",
-      p("Choose a directory"),
-      p(id="rosterEmailCol"),
+      actionButton("goButton", "load session to analyze"),
+      textOutput("wd"),
+      textInput("courseId", label="course id:"),
+      textOutput("rosterInfo"),
+      #p(id="rosterEmailCol"),
       p("unzip"),
       p("Choose assignment components")
     ), # end "Setup" tabPanel
