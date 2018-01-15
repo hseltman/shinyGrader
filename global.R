@@ -273,7 +273,7 @@ initializeGlobalConfig = function() {
 # If more than one roster matches, the most recently modified is used.
 #
 getRoster = function(courseId, Canvas=TRUE) {
-  browser()
+  #browser()
   if (courseId == "") return(NULL)
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
   
@@ -386,7 +386,7 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
   re = paste0(re, "$")
   
   # Simple filenames like "solutions_HW.R"
-  simpleRE = "^([a-zA-Z0-9 ]+)[_]([a-zA-Z0-9 ]+)([.][a-zA-Z][a-zA-Z0-9]{0,3})$"
+  simpleRE = "^([a-zA-Z0-9 ]+)[_]([a-zA-Z0-9 ]+)(-[0-9]+)*([.][a-zA-Z][a-zA-Z0-9]{0,3})$"
 
   # Obtain detailed filename information for specified and simple filename formats
   nonZeroLen = function(x) length(x) > 0
@@ -400,14 +400,32 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
   }
   matchShort = regmatches(filenames, regexec(simpleRE, filenames))
   matchShort = matchShort[sapply(matchShort, nonZeroLen)]
+  shortCols = c("studentName", "baseFileName", "resubmitNumber", "fileExtension")
   if (length(matchShort) == 0) {
     shortDf = NULL
   } else {
     shortDf = data.frame(do.call(rbind, matchShort)[, -1, drop=FALSE], stringsAsFactors=FALSE)
-    names(shortDf) = c("studentName", "baseFileName", "fileExtension")
+    names(shortDf) = shortCols
   }
-
-  return(list(match=matchDf, short=shortDf))
+  if (is.null(shortDf) && is.null(matchDf)) return(NULL)
+  
+  # Merge data.frames
+  if (!is.null(shortDf) && !is.null(matchDf)) {
+    Sel = is.na(match(shortCols, names(matchDf)))
+    if (any(Sel)) {
+      warning("expected in 'matchDf': ", paste(shortCols[Sel], collapse=", "))
+      return(NULL)
+    }
+    cols = vector("list", ncol(matchDf))
+    names(cols) = names(matchDf)
+    for (c in shortCols) cols[[c]] = shortDf[[c]]
+    for (c in names(cols)) {
+      if (is.null(cols[[c]])) cols[[c]] = rep(NA, nrow(shortDf))
+    }
+    matchDf = rbind(matchDf, do.call(data.frame, cols))
+  }
+  
+  return(matchDf)
 } # end parseFilenames()
 
 
