@@ -88,11 +88,10 @@ function(input, output, session) {
   
   observeEvent(input$courseIdText, {
     cid = input$courseIdText
-    #browser()
     if (nchar(cid) > 0) {
       globalConfig[["courseId"]] = trimws(input$courseIdText)
-      browser()
-      roster = getRoster(cid)
+      writeConfig(globalConfig, GLOBAL_CONFIG_NAME)
+      #roster = getRoster(cid)
     }
   })
 
