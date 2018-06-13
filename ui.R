@@ -3,7 +3,7 @@
 # Shiny User Interface for "shinyGrader" app
 
 library(shiny)
-library(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
+require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 fluidPage(
   useShinyjs(), 
@@ -21,13 +21,26 @@ fluidPage(
                         "select any file in the assignment folder."))
     ), # end "Assignment" tabPanel
              
-    tabPanel("Rubrics",
-             radioButtons("codefile", label="Choose a codefile:", choices="(None)"),
-             textInput("inputReq", "Input requirements", ""),
-             textInput("inputAnath", "Input anathemas", ""),
-             textInput("outputReq", "Output requirements", ""),
-             textInput("outputAnath", "Output anathemas", "")
-    ), # end "Setup" tabPanel
+    # tabPanel("Rubrics",
+    #   tabsetPanel(
+    #     tabPanel("P1",
+    #              radioButtons("codefile", label="Choose a codefile for Problem 1:", choices="(None)"),
+    #              textInput("inputReq", "Input requirements", ""),
+    #              textInput("inputAnath", "Input anathemas", ""),
+    #              textInput("outputReq", "Output requirements", ""),
+    #              textInput("outputAnath", "Output anathemas", "")
+    #     ),
+    #     tabPanel("P2",
+    #              radioButtons("codefile2", label="Choose a codefile for Problem 2:", choices="(None)"),
+    #              textInput("inputReq2", "Input requirements", ""),
+    #              textInput("inputAnath2", "Input anathemas", ""),
+    #              textInput("outputReq2", "Output requirements", ""),
+    #              textInput("outputAnath2", "Output anathemas", "")
+    #     )
+    #   ) 
+    # ), # end "Rubrics" tabPanel
+    
+    tabPanel("Problems", eval(parse(text=probPanelCode))), # Problems panel
     
     tabPanel("Grading",
       p("Edit specific configuration"),

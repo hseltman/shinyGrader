@@ -3,7 +3,7 @@
 # Server file for shinyGrader app
 
 library(shiny)
-library(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
+require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {

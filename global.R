@@ -109,6 +109,10 @@ CANVAS_ROSTER_DEFAULTS = list(
 #
 CANVAS_FILENAME_NAME_FORMAT = "lastfirst"
 
+
+# Load code to generate UI "Problems" tab
+source("genProblemTabs.R")
+
 # Convert a text file to a list where the text file
 # has format "id:" followed by lines of text, and each
 # of these id blocks is separated by at least two blank
@@ -260,6 +264,9 @@ initializeGlobalConfig = function() {
   
   return(gc)
 }
+
+# Create initial global configuration object
+globalConfig = initializeGlobalConfig()
 
 
 # Read the class roster.
