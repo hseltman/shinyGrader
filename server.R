@@ -10,10 +10,9 @@ function(input, output, session) {
   globalConfig = initializeGlobalConfig()
   updateTextInput(session=session, inputId="courseIdText",
                   value=globalConfig[["courseId"]])
+  
   roster = reactive({
     cid = input$courseIdText
-    #browser()
-    validate(need(length(cid)>0, "Enter course Id to load roster"))
     #browser()
     getRoster(cid)
   })
@@ -39,9 +38,9 @@ function(input, output, session) {
   
   # })
   
+  
   observe({
     wd = wd()
-    #browser()
     shinyjs::html(id="currentFolder", 
                   paste0("<strong>", wd, "</strong>"))
   })
@@ -63,8 +62,7 @@ function(input, output, session) {
     if (input$changeFolder) {
       f = try(file.choose(), silent=TRUE)
       if (!is(f, "try-error")) {
-        wd = dirname(f)
-        #output$ <- renderText(wd)
+        wd(dirname(f))
         globalConfig = initializeGlobalConfig()
         cid = globalConfig[["courseId"]]
         updateTextInput(session, "courseIdText", cid)

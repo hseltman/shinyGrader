@@ -6,29 +6,21 @@ library(shiny)
 library(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 fluidPage(
-  useShinyjs(),
+  useShinyjs(), 
   titlePanel("shinyGrader"),
   
   tabsetPanel(
     
     tabPanel(title="Assignment",
-             fluidRow(column(2, strong("Current assignment folder:")),
-                      column(10, p(id="currentFolder"))
-             ),
-             fluidRow(column(2, strong("Change folder:")),
-                      column(10, actionButton("changeFolder",
-                                             "Click, then point to a file in the assignment's folder"))
-             ),
-             textInput("courseIdText", label="Course Id:"),
-             p(strong("Roster info:")),
-             textOutput("rosterInfo"), p(),
-             checkboxGroupInput("codeFileCheckboxes", label="Choose codefiles to grade:",
-                                choices="(None)", inline=TRUE),
-             #p(id="rosterEmailCol"),
-             p("unzip"),
-             p("Choose assignment components")
-    ), # end "Setup" tabPanel
-    
+             fluidRow(column(2, actionButton("changeFolder",
+                                  HTML("Change Folder <sup>&Dagger;</sup>"))),
+                      column(10, p(id="currentFolder"))),
+             p(HTML("&nbsp;")),
+             p(HTML("&nbsp;")),
+             HTML(paste("&Dagger;: To change assignment folder,",
+                        "select any file in the assignment folder."))
+    ), # end "Assignment" tabPanel
+             
     tabPanel("Rubrics",
              radioButtons("codefile", label="Choose a codefile:", choices="(None)"),
              textInput("inputReq", "Input requirements", ""),
