@@ -268,6 +268,24 @@ initializeGlobalConfig = function() {
 # Create initial global configuration object
 globalConfig = initializeGlobalConfig()
 
+# Create initial status object
+noTime = numeric(0)
+class(noTime) = "POSIXct"
+status = data.frame(student=I(character(0)),
+                    problem=integer(0),
+                    lastRun=noTime,
+                    newestFile=noTime,
+                    configTime=noTime,
+                    status=integer(0))
+
+# Read file and folder information, and construct status object
+updateStatus = function(status) {
+  # Assure roster is available
+  # Get problem info
+  # Get files for each problem
+  # Write status records for each student/problem
+}
+
 
 # Read the class roster.
 # For Canvas, use the Canvas "Grades / Export" action.
