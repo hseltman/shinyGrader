@@ -7,7 +7,7 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
-  globalConfig = initializeGlobalConfig()
+  #globalConfig = initializeGlobalConfig()
   updateTextInput(session=session, inputId="courseIdText",
                   value=globalConfig[["courseId"]])
   
@@ -63,7 +63,7 @@ function(input, output, session) {
       f = try(file.choose(), silent=TRUE)
       if (!is(f, "try-error")) {
         wd(dirname(f))
-        globalConfig = initializeGlobalConfig()
+        globalConfig = initializeGlobalConfig(globalLoc)
         cid = globalConfig[["courseId"]]
         updateTextInput(session, "courseIdText", cid)
         roster = getRoster(cid)
