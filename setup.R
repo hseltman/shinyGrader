@@ -180,8 +180,22 @@ initializeGlobalConfig = function(HOME) {
   return(gc)
 }
 
+
+# Update global configuration from automatically generated
+# widgets and save a new global config file.
+updateGlobalConfig = function(gc, widgetValues) {
+  if (!identical(widgetValues, gc[names(widgetValues)])) {
+    gc = modifyList(gc, widgetValues)
+    writeConfig(gc, GLOBAL_CONFIG_NAME)
+  }
+  invisible(NULL)
+}
+
+
+
 # Create initial global configuration object
 globalConfig = initializeGlobalConfig(globalLoc)
+#browser()
 
 # Do everything needed for an initial directory or when the user
 # chooses a new directory

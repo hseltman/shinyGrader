@@ -70,6 +70,18 @@ function(input, output, session) {
       }
     }
   })
+  
+  observeEvent(
+    eval(parse(text=paste0("c(",
+                           paste0("input$gc", names(GLOBAL_CONFIG_IDS), collapse=", "),
+                           ")"))), {
+    widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
+    names(widgetValues) = names(GLOBAL_CONFIG_IDS)
+    for (w in names(widgetValues))
+      widgetValues[[w]] = input[[paste0("gc", w)]]
+    updateGlobalConfig(globalConfig, widgetValues)
+  })
+  
     
   #output$currentFolder = renderPrint({
   #  cat(wd())
