@@ -13,6 +13,7 @@
 TIME_STAMP_NAME = "config_mod_time"
 GLOBAL_CONFIG_NAME = "shinyGrader.config"
 SYSTEM_SPECIFIC_CONFIG_NAME = "shinyGrader.specific.config"
+ROSTER_LOCATION_FILE = "shinyGraderRosterLocations.txt"
 
 # Wildcard file inputs
 ALLOWED_STARS = c("*.R", "*.Rmd", "*.RRmd", "*.py", "*.sas")
@@ -76,7 +77,7 @@ GLOBAL_CONFIG_IDS = list(
 
 # Currently allowed global configuration defaults
 GLOBAL_CONFIG_DEFAULTS = list(
-  rosterDirectory = "~",
+  rosterDirectory = "",
   courseId = "",
   emailSuffix = "",
   rosterRE = "Canvas",
@@ -111,16 +112,6 @@ CANVAS_ROSTER_DEFAULTS = list(
 #
 CANVAS_FILENAME_NAME_FORMAT = "lastfirst"
 
-
-# Set variables to match pre-defined environmental variables
-envLoc = Sys.getenv("SHINYGRADER_GLOBAL_CONFIG")
-if (envLoc != "" && is.na(file.info(envLoc)$mode)) {
-  cat(paste("Environmental variable 'SHINYGRADER_GLOBAL_CONFIG' has",
-            "an invalid value (not a valid directory):", envLoc))
-  envLoc = ""
-}
-globalLoc = if (envLoc == "") Sys.getenv("HOME") else envLoc
-if (globalLoc == "") stop("cannot get name of HOME directory")
 
 
 
@@ -166,8 +157,8 @@ initializeGlobalConfig = function(HOME) {
   
   # Expand 'rosterDirectory'
   if (any(names(gc) == "rosterDirectory")) {
-    if (gc[['rosterDirectory']] == "~")
-      gc[['rosterDirectory']] = Sys.getenv("HOME")
+    #if (gc[['rosterDirectory']] == "~")
+    #  gc[['rosterDirectory']] = Sys.getenv("HOME")
     if (gc[['rosterDirectory']] == "")
       stop("cannot read name of HOME directory")
   }
@@ -188,14 +179,11 @@ updateGlobalConfig = function(gc, widgetValues) {
     gc = modifyList(gc, widgetValues)
     writeConfig(gc, GLOBAL_CONFIG_NAME)
   }
-  invisible(NULL)
+  invisible(gc)
 }
 
 
 
-# Create initial global configuration object
-globalConfig = initializeGlobalConfig(globalLoc)
-#browser()
 
 # Do everything needed for an initial directory or when the user
 # chooses a new directory

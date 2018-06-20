@@ -7,19 +7,73 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
-  #globalConfig = initializeGlobalConfig()
-  updateTextInput(session=session, inputId="courseIdText",
-                  value=globalConfig[["courseId"]])
   
-  roster = reactive({
-    cid = input$courseIdText
-    #browser()
-    getRoster(cid)
-  })
+  ### Setup for current directory (things that will change if ###
+  ### the user changes directories.                           ###
+  
+  
+  # Create initial status object
+  noTime = numeric(0)
+  class(noTime) = "POSIXct"
+  status = data.frame(student=I(character(0)),
+                      problem=integer(0),
+                      lastRun=noTime,
+                      newestFile=noTime,
+                      configTime=noTime,
+                      status=integer(0))
+  
+  # Create initial global configuration object
+  globalConfig = reactiveVal(staticGlobalConfig)
+  
+  rosterFileName = reactiveVal(staticRosterFileName)
+  #   gc = staticGlobalConfig
+  #   rname = findRoster(gc$courseId, gc$rosterDirectory)
+  #   if (is.null(rname)) return(NULL)
+  #   if (gc$rosterDirectory != dirname(rname))
+  #     globalConfig(updateGlobalConfig(gc, list(rosterDirectory=dirname(rname))))
+  #   return(rname)
+  # })
+  
+  # Create initial roster
+  roster = reactiveVal(staticRoster)
   #shinyjs::html(id="rosterEmailCol", txt)
+
+  observeEvent(rosterFileName, {
+    rname = rosterFileName()
+    gc = globalConfig()
+    if (is.null(rname)) return(NULL)
+    newDir = dirname(rname)
+    #browser()
+    globalConfig(updateGlobalConfig(gc, list(rosterDirectory=newDir)))
+    updateTextInput(session, "gcrosterDirectory", value=newDir)
+  })
+  
+  observeEvent(roster, {
+    if (is.null(roster())) return(NULL)
+  })
+    
+  # Complete User Interface
+  output$rosterFileRender = renderUI({
+    placeholder = ifelse(is.null(staticRoster), "No file selected",
+                         attr(staticRoster, "file"))
+    fileInput("rosterFile", label=NULL, buttonLabel="New Roster",
+              accept=".csv",
+              width="100%", placeholder=placeholder)
+  })
+  
+  updateTextInput(session=session, inputId="courseIdText",
+                  value=staticGlobalConfig[["courseId"]])
+  updateTextInput(session=session, inputId="gcrosterDirectory",
+                  value=staticGlobalConfig[["rosterDirectory"]])
   
   wd = reactiveVal(getwd())
-  parsedFiles = reactive(parseFilenames(list.files()))
+  
+  parsedFiles = reactive({
+    #browser()
+    gc = globalConfig()
+    parseFilenames(list.files(), globalConfig=gc)
+  })
+  
   codingFiles = reactive({
     pf = parsedFiles()
     fileList = c()
@@ -37,6 +91,7 @@ function(input, output, session) {
   #   cat(paste(cf, collapse=", "))n
   
   # })
+  
   
   
   observe({
@@ -58,17 +113,24 @@ function(input, output, session) {
                              choices=cfSel, inline=TRUE)
   })
     
-  observe({
+  observeEvent(input$changeFolder, {
     if (input$changeFolder) {
       f = try(file.choose(), silent=TRUE)
       if (!is(f, "try-error")) {
         wd(dirname(f))
-        globalConfig = initializeGlobalConfig(globalLoc)
-        cid = globalConfig[["courseId"]]
-        updateTextInput(session, "courseIdText", cid)
-        roster = getRoster(cid)
+        browser()
+        gc = initializeGlobalConfig(globalLoc)
+        #browser()
+        globalConfig(updateGlobalConfig(gc, gc))
+        cid = gc[["courseId"]]
+        updateTextInput(session, "courseIdText", value=cid)
+        roster(getRoster(findRoster(cid, gc$rosterDirectory), gc))
       }
     }
+  })
+  
+  observeEvent(input$rosterFile, {
+    if (!is.null(input$rosterFile)) rosterFileName(input$rosterFile[1, "datapath"])
   })
   
   observeEvent(
@@ -79,7 +141,8 @@ function(input, output, session) {
     names(widgetValues) = names(GLOBAL_CONFIG_IDS)
     for (w in names(widgetValues))
       widgetValues[[w]] = input[[paste0("gc", w)]]
-    updateGlobalConfig(globalConfig, widgetValues)
+    gc = globalConfig()
+    globalConfig(updateGlobalConfig(gc, widgetValues))
   })
   
     
@@ -99,9 +162,9 @@ function(input, output, session) {
   observeEvent(input$courseIdText, {
     cid = input$courseIdText
     if (nchar(cid) > 0) {
-      globalConfig[["courseId"]] = trimws(input$courseIdText)
-      writeConfig(globalConfig, GLOBAL_CONFIG_NAME)
-      #roster = getRoster(cid)
+      gc = globalConfig()
+      globalConfig(updateGlobalConfig(gc, list(courseId = trimws(cid))))
+      #roster = getRoster(cid, gc)
     }
   })
 

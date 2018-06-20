@@ -5,6 +5,9 @@
 #   genUiCode()
 #   textToConfigList()
 #   writeConfig()
+#   updateStatus()
+#   findRoster()
+#   getRoster()
 
 # Create user interface code consisting of a set of Shiny 'textInput',
 # calls created from vectors of names, labels, and values.
@@ -204,3 +207,260 @@ writeConfig = function(lst, filename) {
   }
   return(NULL)
 }
+
+
+
+
+
+# Read file and folder information, and construct status object
+updateStatus = function(status) {
+  # Assure roster is available
+  # Get problem info
+  # Get files for each problem
+  # Write status records for each student/problem
+}
+
+
+# Obtain the appropriate roster file name.  A valid roster file name
+# must contain the 'courseId' and the filename must correspond to
+# the regular expression in 'rosterRD'.  We search for the roster first
+# in the 'startingLoc' (if any), then in the current directory, and
+# then in the 'HOME' directory, unless there is a ROSTER_LOCATION_FILE,
+# in which case the directories listed in that file are searched.
+#
+# If more than one roster matches in the first location with multiple
+# roster files, the most recently modified roster file is selected.
+#
+# Returns full path of the matching filename (or NULL).
+#
+findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
+  if (courseId == "") return(NULL)
+  if (!Canvas) stop("Canvas=FALSE is not yet programmed")
+  
+  # Use a regular expression to find the rosters produced by Canvas
+  rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
+  rosterRE = sub("COURSEID", courseId, rosterRE)
+  
+  # Start in the 'startingLoc'
+  hasStart = !is.null(startingLoc) && trimws(startingLoc) != ""
+  if (hasStart) {
+    loc = getwd()
+    rosterFiles = file.info(grep(rosterRE, list.files(loc), value=TRUE))
+  }
+  if (!hasStart || nrow(rosterFiles) == 0) {
+    loc = getwd()
+    rosterFiles = file.info(grep(rosterRE, list.files(loc), value=TRUE))
+    if (nrow(rosterFiles) == 0) {
+      LOCS = Sys.getenv("HOME")
+      if (file.exists(file.path(LOCS, ROSTER_LOCATION_FILE))) {
+        temp = try(readLines(file.path(LOCS, ROSTER_LOCATION_FILE)))
+        if (!is(temp, "try-error")) LOCS = temp
+      }
+      for (loc in LOCS) {
+        rosterFiles = file.info(file.path(loc,
+                                          grep(rosterRE, list.files(loc), value=TRUE)))
+        if (nrow(rosterFiles) > 0) break
+      }
+      if (nrow(rosterFiles) == 0) return(NULL)
+    }
+  }
+  rosterFileName = rownames(rosterFiles)[which.max(rosterFiles$mtime)]
+  return(rosterFileName)
+}
+
+
+# Read a class roster file and return a data frame.
+#
+# For Canvas, use the Canvas "Grades / Export" action to create the roster
+# file.  It is important to use the Canvas roster rather than the SIO
+# roster because it links the Canvas student id number ("ID") with the full
+# student name "Student Name" and email ("SIS Login ID").  The Canvas filenames
+# start with a "lastfirst" student id that is not unique and does not directly
+# appear in the roster.
+#
+# The default is to read the roster produced by Canvas (from Grades / Export),
+# in which case all of the details of reading rosters may be specified in the
+# global configuration by just using the word "Canvas".
+#
+# The return value is a data.frame with columns "ID", "Name", and "Email"
+# and a "file" attribute containing the roster location or NULL if no
+# roster is found.
+#
+getRoster = function(rosterFileName, globalConfig) {
+  if (is.null(rosterFileName)) return(NULL)
+  # Get names of columns to read from globalConfig  
+  rosterNames = c("rosterIdCol", "rosterNameCol", "rosterEmailCol")
+  rosterCols = lapply(rosterNames, function(x) globalConfig[[x]])
+  badCols = sapply(rosterCols, is.null)
+  if (any(badCols)) {
+    msg = paste0("missing from globalConfig: ",
+                 paste(rosterNames[badCols], collapse=", "))
+    shinyalert("Bad roster file", msg, type = "warning")
+    return(NULL)
+  }
+  # If names are just "Canvas", read in the Canvas defaults
+  rosterCols = sapply(1:length(rosterCols),
+                      function(n) {
+                        val = rosterCols[[n]]
+                        if (val == "Canvas") {
+                          x = CANVAS_ROSTER_DEFAULTS[[rosterNames[[n]]]]
+                          if (is.null(x)) stop(x, " is missing from CANVAS_ROSTER_DEFAULTS")
+                        } 
+                        return(x)
+                      })
+  
+  # Read in the roster csv file
+  # Stupid Canvas roster has "Points Possible" on line 2!!!
+  # It also has an encoding string at the beginning.
+  roster = try(readLines(rosterFileName, encoding="UTF-8"))
+  if (is(roster, "try-error")) return(NULL)
+  #
+  if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
+  roster = try(read.csv(textConnection(roster), as.is=TRUE))
+  if (is(roster, "try-error")) return(NULL)
+  if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.") {
+    names(roster)[1] = substring(names(roster)[1], 10)
+  }
+  
+  # Get the correct column names for shinyGrader
+  rosterColumnNames = lapply(rosterNames, function(n) ROSTER_COLUMN_NAMES[[n]])
+  badColNames = sapply(rosterColumnNames, is.null)
+  if (any(badColNames)) {
+    msg = paste0("missing from ROSTER_COLUMN_NAMES: ",
+                 paste(rosterNames[badColsNames], collapse=", "))
+    shinyalert("Bad roster file", msg, type = "warning")
+    return(NULL)
+  }
+  rosterColumnNames = unlist(rosterColumnNames)
+  
+  # Rename the columns to shinyGrader column names
+  roster = try(roster[, make.names(rosterCols)], silent=TRUE)
+  if (is(roster, "try-error")) {
+    msg = paste0("Roster columns ", paste(rosterCols, collapse=", "),
+                 " not all in ", rosterFileName)
+    
+    shinyalert("Bad roster file", msg, type = "warning")
+    return(NULL)
+  }
+  names(roster) = rosterColumnNames
+  attr(roster, "file") = rosterFileName
+  
+  return(roster)
+} # end getRoster()
+
+
+# Parse filenames to get a portion of the filename from
+# list.files() using both globalConfig[["filenameFormat"]]
+# and "sfne".  The meanings of the codes come from
+# FILE_FORMAT_CODES and FILE_FORMAT_RE.
+# It is assumed that the filename code segments are separated
+# by 'punct' (unless in NO_PRIOR_PUNCTUATION).
+# 
+parseFilenames = function(filenames=list.files(), punct="[_]", globalConfig) {
+  ff = globalConfig[["filenameFormat"]][1]
+  if (tolower(ff) == "canvas") ff = CANVAS_FILENAME_FORMAT
+  ff = strsplit(ff, "")[[1]]
+
+  # Construct regular expression by appending chosen RE sub-patterns
+  re = "^"
+  first = TRUE
+  for (f in ff) {
+    reSeg = FILE_FORMAT_RE[[f]]
+    if (is.null(reSeg)) stop(f, " is an invalid 'filenameFormat' character")
+    
+    # Handle case where meaning of the codes are in the globalConig
+    special = f %in% names(CANVAS_RE_SUBSTITUTE)
+    if (special) {
+      idSub = CANVAS_RE_SUBSTITUTE[[f]]
+      reSeg = globalConfig[[idSub[1]]]
+      if (tolower(reSeg) == "canvas") reSeg = idSub[2]
+    }
+    
+    # Handle no prior punctuation
+    p = punct
+    if (f %in% NO_PRIOR_PUNCTUATION || first) p = ""
+    
+    # If optional: Convert 'foo' to '(pfoo)*'
+    # otherwise Convert 'foo' to 'p(foo)
+    # where 'p' is the punctuation string
+    if (f %in% OPTIONAL_FIELDS) {
+      reSeg = paste0("(", p, reSeg, ")*")
+    } else {
+      reSeg = paste0(p, "(", reSeg, ")")
+    }
+    re = paste0(re, reSeg)
+    first = FALSE
+  }
+  re = paste0(re, "$")
+  
+  # Simple filenames like "solutions_HW.R"
+  simpleRE = "^([a-zA-Z0-9 ]+)[_]([a-zA-Z0-9 ]+)(-[0-9]+)*([.][a-zA-Z][a-zA-Z0-9]{0,3})$"
+  
+  # Obtain detailed filename information for specified and simple filename formats
+  nonZeroLen = function(x) length(x) > 0
+  matchFull = regmatches(filenames, regexec(re, filenames))
+  matchFull = matchFull[sapply(matchFull, nonZeroLen)]
+  if (length(matchFull) == 0) {
+    matchDf = NULL
+  } else {
+    matchDf = data.frame(do.call(rbind, matchFull)[, -1, drop=FALSE], stringsAsFactors=FALSE)
+    names(matchDf) = sapply(ff, function(c) FILE_FORMAT_CODES[[c]])
+  }
+  matchShort = regmatches(filenames, regexec(simpleRE, filenames))
+  matchShort = matchShort[sapply(matchShort, nonZeroLen)]
+  shortCols = c("studentName", "baseFileName", "resubmitNumber", "fileExtension")
+  if (length(matchShort) == 0) {
+    shortDf = NULL
+  } else {
+    shortDf = data.frame(do.call(rbind, matchShort)[, -1, drop=FALSE], stringsAsFactors=FALSE)
+    names(shortDf) = shortCols
+  }
+  if (is.null(shortDf) && is.null(matchDf)) return(NULL)
+  
+  # Merge data.frames
+  if (!is.null(shortDf) && !is.null(matchDf)) {
+    Sel = is.na(match(shortCols, names(matchDf)))
+    if (any(Sel)) {
+      warning("expected in 'matchDf': ", paste(shortCols[Sel], collapse=", "))
+      return(NULL)
+    }
+    cols = vector("list", ncol(matchDf))
+    names(cols) = names(matchDf)
+    for (c in shortCols) cols[[c]] = shortDf[[c]]
+    for (c in names(cols)) {
+      if (is.null(cols[[c]])) cols[[c]] = rep(NA, nrow(shortDf))
+    }
+    matchDf = rbind(matchDf, do.call(data.frame, cols))
+  }
+  
+  return(matchDf)
+} # end parseFilenames()
+
+
+# Get current global configuration
+# globalConfig = initializeGlobalConfig()
+# 
+# roster = getRoster("36602")
+# browser()
+# roster = getRoster(globalConfig[["courseId"]])
+# 
+# # Get current list of codefiles
+# codefiles = strsplit(globalConfig[["assignmentFilenames"]], ";")[[1]]
+
+# Add individual codefiles when "*" is in codefiles
+# starLocs = grep("[*]", codefiles)
+# if (length(starLocs) > 0) {
+#   stars = codefiles[starLocs]
+#   nonStar = setdiff(codefiles, stars)
+#   for (one in stars) {
+#     if (! one %in% ALLOWED_STARS) {
+#       warning("global config, 'codefiles' choice of ", one,
+#               " is not recognized")
+#     } else {
+#       files = parseFilenames("%f.%e")
+#       if (one == "*.RRmd") continue
+#     }
+#   }
+# }
+
+

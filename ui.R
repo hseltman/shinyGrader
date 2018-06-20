@@ -6,9 +6,10 @@
 
 library(shiny)
 require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
+library(shinyalert)
 
 fluidPage(
-  useShinyjs(), 
+  useShinyjs(), useShinyalert(),
   titlePanel("shinyGrader"),
   
   tabsetPanel(
@@ -18,9 +19,12 @@ fluidPage(
              fluidRow(column(2, actionButton("changeFolder",
                                   HTML("Change Folder <sup>&Dagger;</sup>"))),
                       column(10, p(id="currentFolder", style="padding:7px;"))),
+             
+             uiOutput("rosterFileRender"),
+             HTML("&nbsp;"),
              h3("Settings:"),
              genUiCode(names(GLOBAL_CONFIG_IDS), as.character(GLOBAL_CONFIG_IDS),
-                       as.character(globalConfig[names(GLOBAL_CONFIG_IDS)]),
+                       initialGCvalues,
                        prefix="gc", perRow=3),
              p(HTML("&nbsp;")),
              p(HTML("&nbsp;")),
