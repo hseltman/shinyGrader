@@ -84,7 +84,6 @@ function(input, output, session) {
   })
   
   observeEvent(rosterFileName(), {
-    #browser
     rname = rosterFileName()
     if (!is.null(rname)) {
       gc = globalConfig()
@@ -92,8 +91,14 @@ function(input, output, session) {
       #browser()
       globalConfig(updateGlobalConfig(gc, list(rosterDirectory=newDir)))
       updateTextInput(session, "gcrosterDirectory", value=newDir)
-      newRoster = getRoster(rname, gc)
-      roster(newRoster)
+      if (rname == "") {
+        shinyalert("No roster file", "No roster found in the usual places!",
+                   type = "warning")
+        roster(NULL)
+      } else {
+        newRoster = getRoster(rname, gc)
+        roster(newRoster)
+      }
     }
   })
   
@@ -105,7 +110,7 @@ function(input, output, session) {
     } else {
       shinyjs::html(id="currentRoster", "")
     }
-  })
+  }, ignoreNULL=FALSE)
   
   observeEvent(wd(), {
     wd = wd()
@@ -159,11 +164,10 @@ function(input, output, session) {
   })
   
   observeEvent(input$gccourseId, {
-    browser()
+    #browser()
     cid = input$gccourseId
     if (cid != globalConfig()[["courseId"]]) {
       gc = globalConfig()
-      #browser()
       globalConfig(updateGlobalConfig(gc, list(courseId = trimws(cid))))
       rname = findRoster(cid)
       rosterFileName(rname)

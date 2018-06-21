@@ -253,12 +253,13 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
     if (nrow(rosterFiles) == 0) {
       LOCS = Sys.getenv("HOME")
       if (file.exists(file.path(LOCS, ROSTER_LOCATION_FILE))) {
-        temp = try(readLines(file.path(LOCS, ROSTER_LOCATION_FILE)))
+        temp = try(suppressWarnings(readLines(file.path(LOCS, 
+                                                        ROSTER_LOCATION_FILE))))
         if (!is(temp, "try-error")) LOCS = temp
       }
       for (loc in LOCS) {
-        rosterFiles = file.info(file.path(loc,
-                                          grep(rosterRE, list.files(loc), value=TRUE)))
+        rosterFiles = file.info(file.path(loc, grep(rosterRE, list.files(loc),
+                                                    value=TRUE)))
         if (nrow(rosterFiles) > 0) break
       }
       if (nrow(rosterFiles) == 0) return("")
@@ -312,7 +313,7 @@ getRoster = function(rosterFileName, globalConfig) {
   # Read in the roster csv file
   # Stupid Canvas roster has "Points Possible" on line 2!!!
   # It also has an encoding string at the beginning.
-  roster = try(readLines(rosterFileName, encoding="UTF-8"))
+  roster = try(suppressWarnings(readLines(rosterFileName, encoding="UTF-8")))
   if (is(roster, "try-error")) return(NULL)
   #
   if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
