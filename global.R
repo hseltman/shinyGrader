@@ -22,15 +22,22 @@ staticGlobalConfig = initializeGlobalConfig(globalLoc)
 initialGCValues = as.character(staticGlobalConfig[names(GLOBAL_CONFIG_IDS)])
 staticRosterFileName = findRoster(staticGlobalConfig$courseId,
                                   staticGlobalConfig$rosterDirectory)
-staticRosterDirectory = dirname(staticRosterFileName)
-staticRoster = getRoster(staticRosterFileName, staticGlobalConfig)
-if (staticRosterDirectory != initialGCValues[match("rosterDirectory",
-                                                   names(GLOBAL_CONFIG_IDS))]) {
-  updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=staticRosterDirectory))
+if (staticRosterFileName == "") {
+  staticRosterDirectory = ""
+  staticRoster = NULL
+  staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
+                                          list(rosterDirectory=getwd()))
+  staticRosterBaseName = ""
+} else {
+  staticRosterDirectory = dirname(staticRosterFileName)
+  staticRoster = getRoster(staticRosterFileName, staticGlobalConfig)
+  if (staticRosterDirectory != initialGCValues[match("rosterDirectory",
+                                                     names(GLOBAL_CONFIG_IDS))]) {
+    staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
+                                            list(rosterDirectory=staticRosterDirectory))
+  }
+  staticRosterBaseName = basename(attr(staticRoster, "file"))
 }
-  
-
-
 
 
 

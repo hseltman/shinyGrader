@@ -234,7 +234,7 @@ updateStatus = function(status) {
 # Returns full path of the matching filename (or NULL).
 #
 findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
-  if (courseId == "") return(NULL)
+  if (courseId == "") return("")
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
   
   # Use a regular expression to find the rosters produced by Canvas
@@ -261,7 +261,7 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
                                           grep(rosterRE, list.files(loc), value=TRUE)))
         if (nrow(rosterFiles) > 0) break
       }
-      if (nrow(rosterFiles) == 0) return(NULL)
+      if (nrow(rosterFiles) == 0) return("")
     }
   }
   rosterFileName = rownames(rosterFiles)[which.max(rosterFiles$mtime)]
@@ -287,7 +287,7 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 # roster is found.
 #
 getRoster = function(rosterFileName, globalConfig) {
-  if (is.null(rosterFileName)) return(NULL)
+  if (is.null(rosterFileName) || rosterFileName == "") return(NULL)
   # Get names of columns to read from globalConfig  
   rosterNames = c("rosterIdCol", "rosterNameCol", "rosterEmailCol")
   rosterCols = lapply(rosterNames, function(x) globalConfig[[x]])

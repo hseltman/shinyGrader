@@ -20,13 +20,16 @@ fluidPage(
                                   HTML("Change Folder <sup>&Dagger;</sup>"))),
                       column(10, p(id="currentFolder", style="padding:7px;"))),
              
-             uiOutput("rosterFileRender"),
+             #uiOutput("rosterFileRender"),
+             fluidRow(column(2, actionButton("changeRoster",
+                                             HTML("Change Roster"))),
+                      column(10, p(id="currentRoster", style="padding:7px;"))),
+             
              HTML("&nbsp;"),
              h3("Settings:"),
              genUiCode(names(GLOBAL_CONFIG_IDS), as.character(GLOBAL_CONFIG_IDS),
-                       initialGCvalues,
+                       initialGCValues,
                        prefix="gc", perRow=3),
-             p(HTML("&nbsp;")),
              p(HTML("&nbsp;")),
              HTML(paste("<small>&Dagger;: To change assignment folder,",
                         "select any file in the assignment folder.</small>"))

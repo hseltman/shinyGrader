@@ -157,14 +157,14 @@ initializeGlobalConfig = function(HOME) {
   
   # Expand 'rosterDirectory'
   if (any(names(gc) == "rosterDirectory")) {
-    #if (gc[['rosterDirectory']] == "~")
-    #  gc[['rosterDirectory']] = Sys.getenv("HOME")
-    if (gc[['rosterDirectory']] == "")
-      stop("cannot read name of HOME directory")
+    if (gc[['rosterDirectory']] == "") {
+      updated = TRUE
+      gc[['rosterDirectory']] = getwd()
+    }
   }
   
   # Store local version of global configuration file (if new)
-  if (!updated) {
+  if (updated) {
     writeConfig(gc, GLOBAL_CONFIG_NAME)
   }
   
