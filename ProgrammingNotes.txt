@@ -1,0 +1,8 @@
+
+
+
+
+Shiny is being used only as a convenient GUI for ShinyGrader.  It is indended to be run locally, not as a web app.  If will not work on a remote Shiny server.
+
+A pure HTML/Javascript approach precludes the server from knowing file locations on the user's computer.  That would create confusion in this app.  Therefore shinyGrader uses functions like file.choose(), though not choose.files() because it should run on non-Windows computers, rather than the Shiny fileInput() widget.  The later copies the file from the client to a temporary folder on the server and the server only sees the temporary location.  This is the behavior that is bad for this app.
+
