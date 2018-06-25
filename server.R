@@ -84,6 +84,7 @@ function(input, output, session) {
   })
   
   observeEvent(rosterFileName(), {
+    #browser()
     rname = rosterFileName()
     if (!is.null(rname)) {
       gc = globalConfig()
@@ -116,13 +117,30 @@ function(input, output, session) {
     wd = wd()
     shinyjs::html(id="currentFolder", 
                   paste0("<strong>", wd, "</strong>"))
+    #browser()
+    # Make or read global configuration, always starting with
+    # initializeGlobalConfig() in case user edits are bad,
+    gc = initializeGlobalConfig(globalLoc)
+    text = try(suppressWarnings(readLines(GLOBAL_CONFIG_NAME)))
+    if (!is(text, "try-error")) {
+      heregc = textToConfigList(text, names(GLOBAL_CONFIG_IDS),
+                                source=GLOBAL_CONFIG_NAME)
+      if (!is.null(heregc)) {
+        gc = updateGlobalConfig(gc, heregc)
+        globalConfig(gc)
+      }
+    }
+    
+    # Update courseId    
+    cid = gc[["courseId"]]
+    updateTextInput(session, "courseIdText", value=cid)
   })
   
   observeEvent(codingFiles(), {
     cf = codingFiles()
     req(cf)
-    updateCheckboxGroupInput(session, "codeFileCheckboxes",
-                             choices=cf, inline=TRUE)
+    #updateCheckboxGroupInput(session, "codeFileCheckboxes",
+    #                         choices=cf, inline=TRUE)
   })
 
   observeEvent(input$codeFileCheckboxes, {
@@ -137,13 +155,6 @@ function(input, output, session) {
     f = try(file.choose(), silent=TRUE)
     if (!is(f, "try-error")) {
       wd(dirname(f))
-      #browser()
-      gc = initializeGlobalConfig(globalLoc)
-      #browser()
-      globalConfig(updateGlobalConfig(gc, gc))
-      cid = gc[["courseId"]]
-      updateTextInput(session, "courseIdText", value=cid)
-      roster(getRoster(findRoster(cid, gc$rosterDirectory), gc))
     }
   })
   

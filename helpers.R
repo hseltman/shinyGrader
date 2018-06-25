@@ -99,6 +99,7 @@ genUiCode = function(variables, labels, values, prefix="",
 textToConfigList = function(text, varNames, numerics=numeric(0),
                             source) {
   if (length(text) < 2) return(NULL)
+  ignore = TIME_STAMP_NAME
   text = trimws(text)
   
   # Get id lines and verify correct input format
@@ -117,7 +118,7 @@ textToConfigList = function(text, varNames, numerics=numeric(0),
                  pos = idLines[n]
                  substring(text[pos], 1, nchar(text[pos]) - 1)
                })
-  badIds = is.na(match(ids, varNames))
+  badIds = is.na(match(ids, c(varNames, ignore)))
   if (any(badIds)) {
     warning("Bad ids in ", source, ":\n",
             paste(ids[badIds], collapse=", "))
@@ -146,6 +147,8 @@ textToConfigList = function(text, varNames, numerics=numeric(0),
       lst[[i]] = txt
     }
   } # end for each id block in the file
+  toDrop = names(lst) %in% ignore
+  lst = lst[!toDrop]
   
   # Convert 'id's indicated in 'numeric' to numeric
   if (length(numerics) > 0) {
@@ -168,6 +171,10 @@ textToConfigList = function(text, varNames, numerics=numeric(0),
       lst[[i]] = num
     } # end for each numeric field
   } # end if any numeric fields
+  
+  # Drop unneeded values
+  lst = lst[!sapply(lst, is.null)]
+  
   return(lst)
 } # end addTextToList()
 
