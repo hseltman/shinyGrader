@@ -294,63 +294,50 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 # and a "file" attribute containing the roster location or NULL if no
 # roster is found.
 #
-getRoster = function(rosterFileName, globalConfig) {
+getRoster = function(rosterFileName) {
   if (is.null(rosterFileName) || rosterFileName == "") return(NULL)
-  # Get names of columns to read from globalConfig  
-  rosterNames = c("rosterIdCol", "rosterNameCol", "rosterEmailCol")
-  rosterCols = lapply(rosterNames, function(x) globalConfig[[x]])
-  badCols = sapply(rosterCols, is.null)
-  if (any(badCols)) {
-    msg = paste0("missing from globalConfig: ",
-                 paste(rosterNames[badCols], collapse=", "))
-    shinyalert("Bad roster file", msg, type = "warning")
-    return(NULL)
-  }
-  # If names are just "Canvas", read in the Canvas defaults
-  rosterCols = sapply(1:length(rosterCols),
-                      function(n) {
-                        val = rosterCols[[n]]
-                        if (val == "Canvas") {
-                          x = CANVAS_ROSTER_DEFAULTS[[rosterNames[[n]]]]
-                          if (is.null(x)) stop(x, " is missing from CANVAS_ROSTER_DEFAULTS")
-                        } 
-                        return(x)
-                      })
   
+  # Get names of columns to read from a setup.R constant
+  rosterNames = names(CANVAS_ROSTER_NAMES)
+  canvasNames = as.character(CANVAS_ROSTER_NAMES)
+
   # Read in the roster csv file
   # Stupid Canvas roster has "Points Possible" on line 2!!!
-  # It also has an encoding string at the beginning.
+  # It also has an encoding string at the beginning, so we must specify UTF-8.
   roster = try(suppressWarnings(readLines(rosterFileName, encoding="UTF-8")))
   if (is(roster, "try-error")) return(NULL)
   #
   if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
   roster = try(read.csv(textConnection(roster), as.is=TRUE))
   if (is(roster, "try-error")) return(NULL)
-  if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.") {
-    names(roster)[1] = substring(names(roster)[1], 10)
-  }
-  
+
   # Get the correct column names for shinyGrader
-  rosterColumnNames = lapply(rosterNames, function(n) ROSTER_COLUMN_NAMES[[n]])
-  badColNames = sapply(rosterColumnNames, is.null)
+  badColNames = !make.names(canvasNames) %in% names(roster)
   if (any(badColNames)) {
-    msg = paste0("missing from ROSTER_COLUMN_NAMES: ",
-                 paste(rosterNames[badColsNames], collapse=", "))
-    shinyalert("Bad roster file", msg, type = "warning")
+    msg = paste0("missing from roster: ",
+                 paste(canvasNames[badColNames], collapse=", "))
+    if (exists("session")) {
+      shinyalert("Bad roster file", msg, type = "warning")
+    } else {
+      warning("Bad roster file: ", msg)
+    }
     return(NULL)
   }
-  rosterColumnNames = unlist(rosterColumnNames)
-  
+
   # Rename the columns to shinyGrader column names
-  roster = try(roster[, make.names(rosterCols)], silent=TRUE)
+  roster = try(roster[, make.names(canvasNames)], silent=TRUE)
   if (is(roster, "try-error")) {
-    msg = paste0("Roster columns ", paste(rosterCols, collapse=", "),
+    msg = paste0("Roster columns ", paste(canvasNames, collapse=", "),
                  " not all in ", rosterFileName)
     
-    shinyalert("Bad roster file", msg, type = "warning")
+    if (exists("session")) {
+      shinyalert("Bad roster file", msg, type = "warning")
+    } else {
+      warning("Bad roster file: ", msg)
+    }
     return(NULL)
   }
-  names(roster) = rosterColumnNames
+  names(roster) = rosterNames
   attr(roster, "file") = rosterFileName
   
   return(roster)

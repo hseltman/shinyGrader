@@ -57,7 +57,7 @@ function(input, output, session) {
   parsedFiles = reactive({
     #browser()
     gc = globalConfig()
-    parseFilenames(list.files(), globalConfig=gc)
+    parseFilenames(list.files())
   })
   
   # Store coding files and allow observers to know when it changes
@@ -97,7 +97,7 @@ function(input, output, session) {
                    type = "warning")
         roster(NULL)
       } else {
-        newRoster = getRoster(rname, gc)
+        newRoster = getRoster(rname)
         roster(newRoster)
       }
     }

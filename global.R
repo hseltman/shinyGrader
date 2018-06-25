@@ -30,7 +30,7 @@ if (staticRosterFileName == "") {
   staticRosterBaseName = ""
 } else {
   staticRosterDirectory = dirname(staticRosterFileName)
-  staticRoster = getRoster(staticRosterFileName, staticGlobalConfig)
+  staticRoster = getRoster(staticRosterFileName)
   if (staticRosterDirectory != initialGCValues[match("rosterDirectory",
                                                      names(GLOBAL_CONFIG_IDS))]) {
     staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,

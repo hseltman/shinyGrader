@@ -79,7 +79,7 @@ GLOBAL_CONFIG_IDS = list(
 GLOBAL_CONFIG_DEFAULTS = list(
   rosterDirectory = "",
   courseId = "",
-  assingmentName = ""
+  assignmentName = ""
   #emailSuffix = "",
   #rosterRE = "Canvas",
   #rosterIdCol = "Canvas",
@@ -93,12 +93,11 @@ GLOBAL_CONFIG_DEFAULTS = list(
   #resubmitRE = "Canvas"
 )
 
-ROSTER_COLUMN_NAMES = list(
-  rosterIdCol = "ID",
-  rosterNameCol = "Name",
-  rosterFirstNameCol = "FirstName",
-  rosterFamilyNameCol = "LastName",
-  rosterEmailCol = "Email"
+# Element name is for shinyGrader; value is for Canvas Roster
+CANVAS_ROSTER_NAMES = list(
+  ID = "ID",
+  Name = "Student",
+  Email = "SIS Login ID"
 )
 
 # Defaults for the Canvas Roster (from Grades / Export; best at start of course)
@@ -112,7 +111,6 @@ CANVAS_ROSTER_DEFAULTS = list(
 )
 #
 CANVAS_FILENAME_NAME_FORMAT = "lastfirst"
-
 
 
 
