@@ -163,16 +163,36 @@ function(input, output, session) {
     eval(parse(text=paste0("c(",
                            paste0("input$gc", names(GLOBAL_CONFIG_IDS), collapse=", "),
                            ")"))), {
+    browser()
     widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
     names(widgetValues) = names(GLOBAL_CONFIG_IDS)
     for (w in names(widgetValues))
       widgetValues[[w]] = input[[paste0("gc", w)]]
     gc = globalConfig()
-    #browser()
     if (!isTRUE(all.equal(gc[names(widgetValues)], widgetValues))) {
       globalConfig(updateGlobalConfig(gc, widgetValues))
     }
-  })
+  }, ignoreInit=TRUE)
+  
+  # Construct observer for all inputs in each problem configuration tab
+  for (problem in 1:PROBLEM_COUNT) {
+    eval(parse(text=paste0("observeEvent(c(",
+                           paste0("input$", problemInputIds[[problem]], collapse=", "),
+                           "), {",
+                           "shinyjs::enable('", paste0('submitProblemConfig', problem), "')",
+                           "}, ignoreInit=TRUE)")))
+  }
+
+
+  
+  # Construct observer for each 'submitProblemConfig'
+  for (problem in 1:PROBLEM_COUNT) {
+   eval(parse(text=paste0("observeEvent(",
+                          paste0("input$", 'submitProblemConfig', problem),
+                          ", {",
+                          "shinyjs::disable('", paste0('submitProblemConfig', problem), "')",
+                          "}, ignoreInit=TRUE)")))
+  }
   
   observeEvent(input$gccourseId, {
     #browser()

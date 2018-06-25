@@ -4,6 +4,7 @@
 # Generate code like:
 #
 # tabPanel("P1",
+#          shinyjs::disabled(actionButton("submitProblemConfig##", "Save changes")),
 #          radioButtons("codefile", label="Choose a codefile for Problem 1:",
 #            choices="(None)"),
 #          textInput("inputReq", "Input requirements", ""),
@@ -12,9 +13,17 @@
 #
 # from a string vector containing the text with "##" for the problem number.
 
+# This precludes writing UI code for each problem separately, but
+# any changes to 'probPanelCodeOne' will require many other changes
+# to ShinyGrader.
+
 
 probPanelCodeOne = c(
   '  tabPanel("Problem ##",',
+  '    HTML("&nbsp"),',
+  '    shinyjs::disabled(actionButton("submitProblemConfig##", "Save changes")),',
+  '    HTML("&nbsp"),',
+  '    numericInput("initialPoints##", "Initial points for this problem", 100),',
   '    fluidRow(column(2, selectInput("runFileType##", "Type of code to run",',
   '                                   c("(none)", ".R", ".Rmd", ".R or .Rmd",',
   '                                     ".py", ".sas"))),',
@@ -30,11 +39,11 @@ probPanelCodeOne = c(
   '    HTML("&nbsp"),',
   '    p("Requirements and anathemas (anti-requirements) are interpreted as regular",',
   '      "expressions, unless quoted.  An optional initial {#} or {#: myComment} deducts",',
-  '      "that many points for missing requirement or included anathemas.  (Negative values",',
-  '      "can be used for bonus points)"),',
+  '      "that many points for missing requirements or included anathemas.  (Negative",',
+  '      "values can be used for bonus points)"),',
   '    textAreaInput("inputReq##", "Input requirements" ,width="720px", rows=6),',
   '    textAreaInput("inputAnath##", "Input anathemas", width="720px", rows=6),',
-  '    textAreaInput("outputAnath##", "Output anathemas", width="720px", rows=6),',
+  '    textAreaInput("outputReq##", "Output requirements", width="720px", rows=6),',
   '    textAreaInput("outputAnath##", "Output anathemas", width="720px", rows=6),',
   '    HTML("&nbsp;"),',
   '    p("An optional initial {#} or {#: myComment} is allowed for the following:"),',
@@ -43,8 +52,8 @@ probPanelCodeOne = c(
 )
 
 
-problemCount = 3
-probPanelCode = lapply(1:problemCount,
+# Relys on the value of 'PROBLEM_COUNT', set in 'setup.R'.
+probPanelCode = lapply(1:PROBLEM_COUNT,
                        function(index) {
                          txt = gsub("##", paste(index), probPanelCodeOne, fixed=TRUE)
                          return(paste(txt, collapse="\n"))
@@ -53,5 +62,12 @@ probPanelCode = lapply(1:problemCount,
 probPanelCode = paste0("tabsetPanel(",
                        paste(probPanelCode, collapse=",\n"), "\n)")
 
-
-
+# Extract inputIds for each problem into a list
+temp = regexpr('"[a-zA-Z0-9_]*##"', probPanelCodeOne)
+problemInputIds = regmatches(probPanelCodeOne, temp)
+problemInputIds = substring(problemInputIds, 2, nchar(problemInputIds) - 3)
+temp = match("submitProblemConfig", problemInputIds)
+if (is.na(temp)) stop("no 'submitProblemConfig' in 'genProblemTabs.R'")
+problemInputIds = problemInputIds[-temp]
+problemInputIds = lapply(1:PROBLEM_COUNT,
+                         function(x) paste(problemInputIds, x, sep=""))
