@@ -364,9 +364,8 @@ getRoster = function(rosterFileName, globalConfig) {
 # It is assumed that the filename code segments are separated
 # by 'punct' (unless in NO_PRIOR_PUNCTUATION).
 # 
-parseFilenames = function(filenames=list.files(), punct="[_]", globalConfig) {
-  ff = globalConfig[["filenameFormat"]][1]
-  if (tolower(ff) == "canvas") ff = CANVAS_FILENAME_FORMAT
+parseFilenames = function(filenames=list.files(), punct="[_]") {
+  ff = CANVAS_FILENAME_FORMAT
   ff = strsplit(ff, "")[[1]]
 
   # Construct regular expression by appending chosen RE sub-patterns
@@ -376,20 +375,12 @@ parseFilenames = function(filenames=list.files(), punct="[_]", globalConfig) {
     reSeg = FILE_FORMAT_RE[[f]]
     if (is.null(reSeg)) stop(f, " is an invalid 'filenameFormat' character")
     
-    # Handle case where meaning of the codes are in the globalConig
-    special = f %in% names(CANVAS_RE_SUBSTITUTE)
-    if (special) {
-      idSub = CANVAS_RE_SUBSTITUTE[[f]]
-      reSeg = globalConfig[[idSub[1]]]
-      if (tolower(reSeg) == "canvas") reSeg = idSub[2]
-    }
-    
     # Handle no prior punctuation
     p = punct
     if (f %in% NO_PRIOR_PUNCTUATION || first) p = ""
     
-    # If optional: Convert 'foo' to '(pfoo)*'
-    # otherwise Convert 'foo' to 'p(foo)
+    # If optional: Convert 'foo' to '(pfoo)*'.
+    # Otherwise Convert 'foo' to 'p(foo'
     # where 'p' is the punctuation string
     if (f %in% OPTIONAL_FIELDS) {
       reSeg = paste0("(", p, reSeg, ")*")
@@ -401,10 +392,7 @@ parseFilenames = function(filenames=list.files(), punct="[_]", globalConfig) {
   }
   re = paste0(re, "$")
   
-  # Simple filenames like "solutions_HW.R"
-  simpleRE = "^([a-zA-Z0-9 ]+)[_]([a-zA-Z0-9 ]+)(-[0-9]+)*([.][a-zA-Z][a-zA-Z0-9]{0,3})$"
-  
-  # Obtain detailed filename information for specified and simple filename formats
+  # Obtain detailed filename information for specified filename formats
   nonZeroLen = function(x) length(x) > 0
   matchFull = regmatches(filenames, regexec(re, filenames))
   matchFull = matchFull[sapply(matchFull, nonZeroLen)]
@@ -414,32 +402,11 @@ parseFilenames = function(filenames=list.files(), punct="[_]", globalConfig) {
     matchDf = data.frame(do.call(rbind, matchFull)[, -1, drop=FALSE], stringsAsFactors=FALSE)
     names(matchDf) = sapply(ff, function(c) FILE_FORMAT_CODES[[c]])
   }
-  matchShort = regmatches(filenames, regexec(simpleRE, filenames))
-  matchShort = matchShort[sapply(matchShort, nonZeroLen)]
-  shortCols = c("studentName", "baseFileName", "resubmitNumber", "fileExtension")
-  if (length(matchShort) == 0) {
-    shortDf = NULL
-  } else {
-    shortDf = data.frame(do.call(rbind, matchShort)[, -1, drop=FALSE], stringsAsFactors=FALSE)
-    names(shortDf) = shortCols
-  }
-  if (is.null(shortDf) && is.null(matchDf)) return(NULL)
+  if (is.null(matchDf)) return(NULL)
   
-  # Merge data.frames
-  if (!is.null(shortDf) && !is.null(matchDf)) {
-    Sel = is.na(match(shortCols, names(matchDf)))
-    if (any(Sel)) {
-      warning("expected in 'matchDf': ", paste(shortCols[Sel], collapse=", "))
-      return(NULL)
-    }
-    cols = vector("list", ncol(matchDf))
-    names(cols) = names(matchDf)
-    for (c in shortCols) cols[[c]] = shortDf[[c]]
-    for (c in names(cols)) {
-      if (is.null(cols[[c]])) cols[[c]] = rep(NA, nrow(shortDf))
-    }
-    matchDf = rbind(matchDf, do.call(data.frame, cols))
-  }
+  # Cleanup data
+  matchDf$resubmitNumber = gsub("-", "", matchDf$resubmitNumber)
+  matchDf$lateFlat = gsub("_", "", matchDf$resubmitNumber)
   
   return(matchDf)
 } # end parseFilenames()

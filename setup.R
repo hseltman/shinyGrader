@@ -53,43 +53,44 @@ NO_PRIOR_PUNCTUATION = c("n", "e")
 CANVAS_FILENAME_FORMAT = "sfiubne"
 # What to substitute when "Canvas" is found in
 # a globalConfig RE entry.
-CANVAS_RE_SUBSTITUTE = list(
-  f = c("lateFlagRE", CANVAS_LATE_RE),
-  n = c("resubmitRE", CANVAS_RESUBMIT_RE)
-)
+#CANVAS_RE_SUBSTITUTE = list(
+#  f = c("lateFlagRE", CANVAS_LATE_RE),
+#  n = c("resubmitRE", CANVAS_RESUBMIT_RE)
+#)
 
 # Currently allowed global configuration names and text
 GLOBAL_CONFIG_IDS = list(
   rosterDirectory = "Roster Directory",
   courseId = "Course Id",
-  emailSuffix = "Email suffix",
-  rosterRE = "Regular expression to find rosters",
-  rosterIdCol = "Roster ID column",
-  rosterNameCol = "Roster name column",
-  rosterFirstNameCol = "Roster first name column",
-  rosterFamilyNameCol = "Roster family name column",
-  rosterEmailCol = "Roster email column",
-  filenameFormat = "Filename format",
-  filenameNameFormat = "Filename name format",
-  lateFlagRE = "Late flag regular expression",
-  resubmitRE = "Resubmit regular expression"
+  assignmentName = "Assignment Name"
+  #rosterRE = "Regular expression to find rosters",
+  #rosterIdCol = "Roster ID column",
+  #rosterNameCol = "Roster name column",
+  #rosterFirstNameCol = "Roster first name column",
+  #rosterFamilyNameCol = "Roster family name column",
+  #rosterEmailCol = "Roster email column",
+  #filenameFormat = "Filename format",
+  #filenameNameFormat = "Filename name format",
+  #lateFlagRE = "Late flag regular expression",
+  #resubmitRE = "Resubmit regular expression"
 )
 
 # Currently allowed global configuration defaults
 GLOBAL_CONFIG_DEFAULTS = list(
   rosterDirectory = "",
   courseId = "",
-  emailSuffix = "",
-  rosterRE = "Canvas",
-  rosterIdCol = "Canvas",
-  rosterNameCol = "Canvas",
-  rosterFirstNameCol = "Canvas",
-  rosterFamilyNameCol = "Canvas",
-  rosterEmailCol = "Canvas",
-  filenameFormat = "Canvas",
-  filenameNameFormat = "Canvas",
-  lateFlagRE = "Canvas",
-  resubmitRE = "Canvas"
+  assingmentName = ""
+  #emailSuffix = "",
+  #rosterRE = "Canvas",
+  #rosterIdCol = "Canvas",
+  #rosterNameCol = "Canvas",
+  #rosterFirstNameCol = "Canvas",
+  #rosterFamilyNameCol = "Canvas",
+  #rosterEmailCol = "Canvas",
+  #filenameFormat = "Canvas",
+  #filenameNameFormat = "Canvas",
+  #lateFlagRE = "Canvas",
+  #resubmitRE = "Canvas"
 )
 
 ROSTER_COLUMN_NAMES = list(
