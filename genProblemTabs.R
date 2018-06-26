@@ -45,10 +45,20 @@ probPanelCodeOne = c(
   '    textAreaInput("inputAnath##", "Input anathemas", width="720px", rows=6),',
   '    textAreaInput("outputReq##", "Output requirements", width="720px", rows=6),',
   '    textAreaInput("outputAnath##", "Output anathemas", width="720px", rows=6),',
+  '    textAreaInput("warnIgnore##", "Warning text to ignore",',
+  '                  width="720px", rows=4),',
+  '    textAreaInput("errIgnore##", "Error text to ignore",',
+  '                  width="720px", rows=4),',
   '    HTML("&nbsp;"),',
-  '    p("An optional initial {#} or {#: myComment} is allowed for the following:"),',
-  '    textInput("minComments##", "Minimum number of comment lines", width="100%"),',
-  '    textInput("minBlanks##", "Minimum number of blank lines", width="100%"))'
+  '    p("Enter numbers for the following:"),',
+  '    fluidRow(column(4, numericInput("minComments##", "Minimum number of comment lines", 0)),',
+  '             column(3, numericInput("commentPts##", "Point loss for below minimum", 0))),',
+  '    fluidRow(column(4, numericInput("minBlanks##", "Minimum number of blank lines", 0)),',
+  '             column(3, numericInput("blankPts##", "Point loss for below minimum", 0))),',
+  '    fluidRow(column(4, numericInput("warnPtsLost##", "Points lost per warning", 0)),',
+  '             column(3, numericInput("maxWarnPtsLost##", "Maximum warning points lost", 999))),',
+  '    fluidRow(column(4, numericInput("errPtsLost##", "Points lost per error", 0)),',
+  '             column(3, numericInput("maxErrPtsLost##", "Maximum error points lost", 999))))'
 )
 
 
