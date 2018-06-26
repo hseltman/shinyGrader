@@ -19,8 +19,7 @@ fluidPage(
              fluidRow(column(2, actionButton("changeFolder",
                                   HTML("Change Folder <sup>&Dagger;</sup>"))),
                       column(10, p(id="currentFolder", style="padding:7px;"))),
-             
-             #uiOutput("rosterFileRender"),
+
              fluidRow(column(2, actionButton("changeRoster",
                                              HTML("Change Roster"))),
                       column(10, p(id="currentRoster", style="padding:7px;"))),

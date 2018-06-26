@@ -8,6 +8,10 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 # Server function
 function(input, output, session) {
   
+  # This app is intended to only be run locally.
+  # Stop it if the browser window is closed.
+  session$onSessionEnded(stopApp)
+  
   ### Setup for current directory (things that will change if ###
   ### the user changes directories.                           ###
   
@@ -179,19 +183,24 @@ function(input, output, session) {
     eval(parse(text=paste0("observeEvent(c(",
                            paste0("input$", problemInputIds[[problem]], collapse=", "),
                            "), {",
-                           "shinyjs::enable('", paste0('submitProblemConfig', problem), "')",
+                           "shinyjs::enable('submitProblemConfig", problem, "');",
                            "}, ignoreInit=TRUE)")))
   }
 
-
-  
   # Construct observer for each 'submitProblemConfig'
   for (problem in 1:PROBLEM_COUNT) {
-   eval(parse(text=paste0("observeEvent(",
-                          paste0("input$", 'submitProblemConfig', problem),
-                          ", {",
-                          "shinyjs::disable('", paste0('submitProblemConfig', problem), "')",
-                          "}, ignoreInit=TRUE)")))
+    assigns = paste0("lst[['", problemInputIds[[problem]], "']] = ",
+                           "input$", problemInputIds[[problem]], collapse="\n")
+    eval(parse(text=paste0("observeEvent(",
+                           paste0("input$", 'submitProblemConfig', problem),
+                           ", {",
+                           "shinyjs::disable('", paste0('submitProblemConfig', problem), "');",
+                           "n = length(problemInputIds[[problem]]);",
+                           "lst = vector('list', n);",
+                           "names(lst) = problemInputIds[[problem]];",
+                           assigns,
+                           ";saveRubric(", problem, ", lst)",
+                           "}, ignoreInit=TRUE)")))
   }
   
   observeEvent(input$gccourseId, {

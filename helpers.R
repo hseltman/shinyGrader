@@ -8,6 +8,7 @@
 #   updateStatus()
 #   findRoster()
 #   getRoster()
+#   saveRubric()
 
 # Create user interface code consisting of a set of Shiny 'textInput',
 # calls created from vectors of names, labels, and values.
@@ -426,3 +427,8 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
 # }
 
 
+# Save the rubric for a problem
+saveRubric = function(problem, rubricList) {
+  save(rubricList, file=paste0("rubric", problem, ".Rdata"))
+  invisible(NULL)
+}
