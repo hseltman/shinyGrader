@@ -9,6 +9,7 @@
 #   findRoster()
 #   getRoster()
 #   saveRubric()
+#   getRubrics()
 
 # Create user interface code consisting of a set of Shiny 'textInput',
 # calls created from vectors of names, labels, and values.
@@ -428,7 +429,40 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
 
 
 # Save the rubric for a problem
+#
+# Save a rubricList in a .Rmd file called 'rubric#.RData'.
+# The 'rubricList' is a named list of all widgets (except for
+# 'submitProblemRubric#') on one Problem Rubric page. It is
+# created by the 'observeInput()' for 'submitProblemRubric#'.
+#
 saveRubric = function(problem, rubricList) {
-  save(rubricList, file=paste0("rubric", problem, ".Rdata"))
+  save(rubricList, file=paste0("rubric", problem, ".RData"))
   invisible(NULL)
+}
+
+
+# Get the rubrics for all problems into a list of lists
+#
+# Each outer element is for a different problem within the assignment.
+# Each inner element is name for its widget on the Problem tab, and
+# has a value of the appropriate type to initialize the widget.
+#
+# Rubric data comes from rubricDefaults() or a saved rubric#.RData file.
+#
+getRubrics = function() {
+  rubric = vector("list", PROBLEM_COUNT)
+  for (problem in 1:PROBLEM_COUNT) {
+    # Note: this loads 'rubricList'
+    rslt = try(suppressWarnings(load(paste0("rubric", problem, ".RData"))),
+               silent=TRUE)
+    if (is(rslt, "try-error")) {
+      rubric[[problem]] = rubricDefaults
+      names(rubric[[problem]]) = paste0(names(rubric[[problem]]), problem)
+    } else {
+      if (length(rslt) != 1 || rslt != "rubricList")
+        stop(paste0("rubric", problem, ".RData"), " was manually altered!")
+      rubric[[problem]] = rubricList
+    }
+  }
+  return(rubric)
 }
