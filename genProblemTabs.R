@@ -4,7 +4,7 @@
 # Generate code like:
 #
 # tabPanel("P1",
-#          shinyjs::disabled(actionButton("submitProblemConfig##", "Save changes")),
+#          shinyjs::disabled(actionButton("submitProblemRubric##", "Save changes")),
 #          radioButtons("codefile", label="Choose a codefile for Problem 1:",
 #            choices="(None)"),
 #          textInput("inputReq", "Input requirements", ""),
@@ -21,7 +21,7 @@
 probPanelCodeOne = c(
   '  tabPanel("Problem ##",',
   '     h3("Problem ## Rubric"),',
-  '    shinyjs::disabled(actionButton("submitProblemConfig##", "Save changes")),',
+  '    shinyjs::disabled(actionButton("submitProblemRubric##", "Save changes")),',
   '    HTML("&nbsp"),',
   '    numericInput("initialPoints##", "Initial points for this problem", 100),',
   '    fluidRow(column(2, textInput("runFileName##", "Name (or re) of code to run")),',
@@ -76,8 +76,8 @@ probPanelCode = paste0("tabsetPanel(",
 temp = regexpr('"[a-zA-Z0-9_]*##"', probPanelCodeOne)
 problemInputIds = regmatches(probPanelCodeOne, temp)
 problemInputIds = substring(problemInputIds, 2, nchar(problemInputIds) - 3)
-temp = match("submitProblemConfig", problemInputIds)
-if (is.na(temp)) stop("no 'submitProblemConfig' in 'genProblemTabs.R'")
+temp = match("submitProblemRubric", problemInputIds)
+if (is.na(temp)) stop("no 'submitProblemRubric' in 'genProblemTabs.R'")
 problemInputIds = problemInputIds[-temp]
 problemInputIds = lapply(1:PROBLEM_COUNT,
                          function(x) paste(problemInputIds, x, sep=""))

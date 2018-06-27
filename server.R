@@ -183,18 +183,18 @@ function(input, output, session) {
     eval(parse(text=paste0("observeEvent(c(",
                            paste0("input$", problemInputIds[[problem]], collapse=", "),
                            "), {",
-                           "shinyjs::enable('submitProblemConfig", problem, "');",
+                           "shinyjs::enable('submitProblemRubric", problem, "');",
                            "}, ignoreInit=TRUE)")))
   }
 
-  # Construct observer for each 'submitProblemConfig'
+  # Construct observer for each 'submitProblemRubric'
   for (problem in 1:PROBLEM_COUNT) {
     assigns = paste0("lst[['", problemInputIds[[problem]], "']] = ",
                            "input$", problemInputIds[[problem]], collapse="\n")
     eval(parse(text=paste0("observeEvent(",
-                           paste0("input$", 'submitProblemConfig', problem),
+                           paste0("input$", 'submitProblemRubric', problem),
                            ", {",
-                           "shinyjs::disable('", paste0('submitProblemConfig', problem), "');",
+                           "shinyjs::disable('", paste0('submitProblemRubric', problem), "');",
                            "n = length(problemInputIds[[", problem, "]]);",
                            "lst = vector('list', n);",
                            "names(lst) = problemInputIds[[", problem, "]];",
