@@ -81,3 +81,63 @@ if (is.na(temp)) stop("no 'submitProblemRubric' in 'genProblemTabs.R'")
 problemInputIds = problemInputIds[-temp]
 problemInputIds = lapply(1:PROBLEM_COUNT,
                          function(x) paste(problemInputIds, x, sep=""))
+
+
+# Find defaults from a string vector like 'probPanelCodeOne' above.
+getInputDefaults = function(code) {
+  # Get code as a single string
+  html = as.character(eval(parse(text=code)))
+  
+  # Handle textInput, numericInput, and checkboxInput
+  gre = gregexpr('<input id="[a-zA-Z0-9_]*##" .*?/>', html)
+  txt = regmatches(html, gre)[[1]]
+  locs = regexpr('"[a-zA-Z0-9_]*', txt)
+  ids = substring(regmatches(txt, locs), 2)
+  locs = regexpr('type="[a-z]+', txt)
+  types = substring(regmatches(txt, locs), 7)
+  checkValues = rep(FALSE, sum(types == "checkbox"))
+  checkValues[grepl('checked="checked"', txt[types == "checkbox"])] = TRUE
+  # Note: 'value=' may be missing for checkbox
+  locs = regexpr('value=".*"', txt)
+  defaults = lapply(txt, function(x) {
+    locs = regexpr('value=".*"', x)
+    val = regmatches(x, locs)
+    if (length(val) > 0) val = substring(val, 8, nchar(val)-1)
+    return(val)
+  })
+  defaults[types == "checkbox"] = checkValues
+  defaults[types == "number"] = as.numeric(defaults[types == "number"])
+  names(defaults) = ids
+  
+  # Handle selectInput
+  gre = gregexpr('<select id="[a-zA-Z0-9_]*##".*?</option>', html)
+  txt = regmatches(html, gre)[[1]]
+  if (length(txt) > 0) {
+    locs = regexpr('"[a-zA-Z0-9_]*', txt)
+    ids = substring(regmatches(txt, locs), 2)
+    locs = regexpr(' selected>.*?</option>', txt)
+    values = regmatches(txt, locs)
+    values = as.list(substring(values, 11, nchar(values) - 9))
+    names(values) = ids
+    defaults = modifyList(defaults, values)
+  }
+  
+  # Handle textAreaInput
+  gre = gregexpr('<textarea id="[a-zA-Z0-9_]*##".*?</textarea>', html)
+  txt = regmatches(html, gre)[[1]]
+  if (length(txt) > 0) {
+    locs = regexpr('"[a-zA-Z0-9_]*', txt)
+    ids = substring(regmatches(txt, locs), 2)
+    locs = regexpr('>.*</textarea>', txt)
+    values = regmatches(txt, locs)
+    values = as.list(substring(values, 2, nchar(values) - 11))
+    names(values) = ids
+    defaults = modifyList(defaults, values)
+  }
+
+  return(defaults)
+}
+
+# store rubric defaults
+rubricDefaults = getInputDefaults(probPanelCodeOne)
+# (note: could be updated here from a user global file)
