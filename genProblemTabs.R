@@ -108,6 +108,8 @@ getInputDefaults = function(code) {
   defaults[types == "checkbox"] = checkValues
   defaults[types == "number"] = as.numeric(defaults[types == "number"])
   names(defaults) = ids
+  types[types=="number"] = "numeric"
+  for (i in 1:length(defaults)) attr(defaults[[i]], "type") = types[i]
   
   # Handle selectInput
   gre = gregexpr('<select id="[a-zA-Z0-9_]*##".*?</option>', html)
@@ -119,6 +121,7 @@ getInputDefaults = function(code) {
     values = regmatches(txt, locs)
     values = as.list(substring(values, 11, nchar(values) - 9))
     names(values) = ids
+    for (i in 1:length(values)) attr(values[[i]], "type") = "select"
     defaults = modifyList(defaults, values)
   }
   
@@ -132,6 +135,7 @@ getInputDefaults = function(code) {
     values = regmatches(txt, locs)
     values = as.list(substring(values, 2, nchar(values) - 11))
     names(values) = ids
+    for (i in 1:length(values)) attr(values[[i]], "type") = "textArea"
     defaults = modifyList(defaults, values)
   }
 
