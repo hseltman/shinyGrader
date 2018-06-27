@@ -39,5 +39,5 @@ if (staticRosterFileName == "") {
   staticRosterBaseName = basename(attr(staticRoster, "file"))
 }
 
-
+staticRubrics = getRubrics()
 
