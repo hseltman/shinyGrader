@@ -23,7 +23,7 @@ probPanelCodeOne = c(
   '     h3("Problem ## Rubric"),',
   '    shinyjs::disabled(actionButton("submitProblemRubric##", "Save changes")),',
   '    HTML("&nbsp"),',
-  '    numericInput("initialPoints##", "Initial points for this problem", 100),',
+  '    numericInput("initialPoints##", "Initial points for this problem", 0),',
   '    fluidRow(column(2, textInput("runFileName##", "Name (or re) of code to run")),',
   '             column(10, selectInput("runFileType##", "Type of code to run",',
   '                                    c("(none)", ".R", ".Rmd", ".R or .Rmd",',
