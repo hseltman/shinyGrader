@@ -195,9 +195,9 @@ function(input, output, session) {
                            paste0("input$", 'submitProblemConfig', problem),
                            ", {",
                            "shinyjs::disable('", paste0('submitProblemConfig', problem), "');",
-                           "n = length(problemInputIds[[problem]]);",
+                           "n = length(problemInputIds[[", problem, "]]);",
                            "lst = vector('list', n);",
-                           "names(lst) = problemInputIds[[problem]];",
+                           "names(lst) = problemInputIds[[", problem, "]];",
                            assigns,
                            ";saveRubric(", problem, ", lst)",
                            "}, ignoreInit=TRUE)")))
