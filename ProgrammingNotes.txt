@@ -4,5 +4,8 @@
 
 Shiny is being used only as a convenient GUI for ShinyGrader.  It is indended to be run locally, not as a web app.  If will not work on a remote Shiny server.
 
-A pure HTML/Javascript approach precludes the server from knowing file locations on the user's computer.  That would create confusion in this app.  Therefore shinyGrader uses functions like file.choose(), though not choose.files() because it should run on non-Windows computers, rather than the Shiny fileInput() widget.  The later copies the file from the client to a temporary folder on the server and the server only sees the temporary location.  This is the behavior that is bad for this app.
+A pure HTML/Javascript approach precludes the server from knowing file locations on the user's computer.  That would create confusion in this app.  Therefore shinyGrader uses functions like file.choose(), though not choose.files() because it that only runs on Windows computers, rather than the Shiny fileInput() widget.  The later copies the file from the client to a temporary folder on the server and the server only sees the temporary location.  Not showing the user the location on her computer is the behavior that is bad for this app.
+
+Much effort is expended to be DRY.  One important benefit is that a user need only change 'PROBLEM_COUNT' in 'setup.R' to change the number of problems allowed.  As another example, the widgets that comprise each problem rubric can be changed by changing 'probPanelCodeOne' in 'genProblemTabs.R' and all of the reactive code will be automatically adjusted.  (Of course, the functionality of the new widget must be coded manually.)
+
 
