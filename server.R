@@ -40,6 +40,8 @@ function(input, output, session) {
     shinyjs::html(id="rosterSize", 
                   paste0("(",  nrow(staticRoster), " rows)"))
   }
+  shinyjs::html(id="currentFolder", 
+                paste0("<strong>", getwd(), "</strong>"))
   
   ########################
   ### Create reactives ###
@@ -56,6 +58,9 @@ function(input, output, session) {
   
   # Store roster and allow observers to know when it changes
   roster = reactiveVal(staticRoster)
+  
+  # Store rubrics and allow observers to know when they change
+  rubrics = reactiveVal(staticRubrics)
   
   # Store parsed files and allow observers to know when it changes
   parsedFiles = reactive({
@@ -117,10 +122,23 @@ function(input, output, session) {
     }
   }, ignoreNULL=FALSE)
   
+  observeEvent(input$changeFolder, {
+    #req(input$changeFolder)
+    f = try(file.choose(), silent=TRUE)
+    if (!is(f, "try-error")) {
+      newWd = dirname(f)
+      wd(newWd)
+    }
+  })
+  
   observeEvent(wd(), {
-    wd = wd()
+    newDir = wd()
+    rslt = try(setwd(newDir))
+    if (is(rslt, "try-error")) {
+      shinyalert("Can't change directory", "Can't change directory")
+    }
     shinyjs::html(id="currentFolder", 
-                  paste0("<strong>", wd, "</strong>"))
+                  paste0("<strong>", newDir, "</strong>"))
     #browser()
     # Make or read global configuration, always starting with
     # initializeGlobalConfig() in case user edits are bad,
@@ -138,7 +156,14 @@ function(input, output, session) {
     # Update courseId    
     cid = gc[["courseId"]]
     updateTextInput(session, "courseIdText", value=cid)
-  })
+    
+    # Update rubrics
+    rubNew = getRubrics()
+    rubrics(rubNew)
+    updateTextInput(session, "filesToCopy1", value=rubNew[[1]][["filesToCopy1"]])
+    updateTextInput(session, "filesToCopy2", value=rubNew[[2]][["filesToCopy2"]])
+    updateTextInput(session, "filesToCopy3", value=rubNew[[3]][["filesToCopy3"]])
+  }, ignoreInit=TRUE)
   
   observeEvent(codingFiles(), {
     cf = codingFiles()
@@ -153,15 +178,6 @@ function(input, output, session) {
                              choices=cfSel, inline=TRUE)
   })
     
-  observeEvent(input$changeFolder, {
-    #req(input$changeFolder)
-    #browser()
-    f = try(file.choose(), silent=TRUE)
-    if (!is(f, "try-error")) {
-      wd(dirname(f))
-    }
-  })
-  
   # Construct observer for all inputs related to global configuration
   observeEvent(
     eval(parse(text=paste0("c(",
