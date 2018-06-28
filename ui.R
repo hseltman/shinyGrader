@@ -25,10 +25,11 @@ fluidPage(
                       column(10, p(id="currentRoster", style="padding:7px;"))),
              
              HTML("&nbsp;"),
+             p("Total points: 0", id="totalPoints"),
              h3("Settings:"),
-             genUiCode(names(GLOBAL_CONFIG_IDS), as.character(GLOBAL_CONFIG_IDS),
-                       initialGCValues,
-                       prefix="gc", perRow=3),
+             textInput("gccourseId", "Course Id (e.g., 36200)"),
+             textInput("gcassignmentName", "Assignment Name", width="100%"),
+             textInput("gcrosterDirectory", "Roster Directory", width="100%"),
              p(HTML("&nbsp;")),
              HTML(paste("<small>&Dagger;: To change assignment folder,",
                         "select any file in the assignment folder.</small>"))

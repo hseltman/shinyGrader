@@ -2,7 +2,6 @@
 # H. Seltman, June 2018
 
 # Functions in this file:
-#   genUiCode()
 #   textToConfigList()
 #   writeConfig()
 #   updateStatus()
@@ -10,68 +9,6 @@
 #   getRoster()
 #   saveRubric()
 #   getRubrics()
-
-# Create user interface code consisting of a set of Shiny 'textInput',
-# calls created from vectors of names, labels, and values.
-# The recommended 'prefix' reduces the chance of a name class, and
-# is prepended to the 'inputId'.
-#
-# Specific variables may be dropped (specified as a string vector)
-#
-# To use, just call this function in the user interface code.
-#
-genUiCode = function(variables, labels, values, prefix="",
-                     drop=NULL, perRow=1) {
-  if (!perRow %in% c(1, 2, 3, 4, 6))
-    stop("'perRow' must be one of 1, 2, 3, 4, 6")
-  if (!is(variables, "character")) stop("'variables' must be 'character' data")
-  if (!is(labels, "character")) stop("'labels' must be 'character' data")
-  if (!is(values, "character")) stop("'values' must be 'character' data")
-  n = length(variables)
-  if (n < 1) stop("'variables' must have at least one element")
-  if (length(labels) != n) stop("'labels' and 'variables' must have the same length")
-  if (length(values) != n) stop("'values' and 'variables' must have the same length")
-  
-  # Drop specified variables
-  if (is(drop, "character")) {
-    toDrop = match(drop, variables)
-    if (length(toDrop) > 0) {
-      variables = variables[-toDrop]
-      labels = labels[-toDrop]
-      values = values[-toDrop]
-      n = n - length(toDrop)
-    }
-  }
-  
-  width = 12 / perRow
-  rows = ceiling(n / perRow)
-  textList = vector("list", rows)
-  row = 1
-  for (line in 1:n) {
-    lastOnRow = (line == n) || (line%%perRow == 0)
-    firstOnRow = line%%perRow == 1
-    if (firstOnRow) {
-      at = 1 # text element we are writing at
-      textList[[row]] = "fluidRow("
-      at = at + 1
-    }
-    textList[[row]][at] = paste0("  column(", width, ", ",
-                          "textInput(",
-                          "inputId='", prefix, variables[line], "', ",
-                          "label='", labels[line], "', ",
-                          "value='", values[line], "'))"
-                         )
-    if (lastOnRow) {
-      textList[[row]][at] = paste0(textList[[row]][at], ")")
-      row = row + 1
-    } else {
-      textList[[row]][at] = paste0(textList[[row]][at], ",")
-    }
-    at = at + 1
-  }
-
-  return(lapply(textList, function(x) eval(parse(text=x))))
-}
 
 
 # Convert a special kind of text file into a named list.
