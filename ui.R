@@ -25,7 +25,7 @@ fluidPage(
                       column(10, p(id="currentRoster", style="padding:7px;"))),
              
              HTML("&nbsp;"),
-             p("Total points: 0", id="totalPoints"),
+             p(id="totalPoints", "Total points: 0"),
              h3("Settings:"),
              textInput("gccourseId", "Course Id (e.g., 36200)"),
              textInput("gcassignmentName", "Assignment Name", width="100%"),
@@ -34,9 +34,12 @@ fluidPage(
              HTML(paste("<small>&Dagger;: To change assignment folder,",
                         "select any file in the assignment folder.</small>"))
     ), # end "Assignment" tabPanel
-             
-    tabPanel("Problems", eval(parse(text=probPanelCode))), # Problems panel
-    
+
+
+    # Generate problem rubrics panel automatically
+    tabPanel("Problems", eval(parse(text=probPanelCode))),
+
+        
     tabPanel("Grading",
       p("Edit specific configuration"),
       p("Grade one"),

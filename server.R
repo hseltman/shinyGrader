@@ -43,6 +43,13 @@ function(input, output, session) {
   shinyjs::html(id="currentFolder", 
                 paste0("<strong>", getwd(), "</strong>"))
   
+  shinyjs::html(id="totalPoints", 
+                paste0("<strong>", "Total points: ",
+                       sum(sapply(1:PROBLEM_COUNT, {
+                         function(p) staticRubrics[[p]][[paste0("initialPoints", p)]]
+                       })),
+                       "</strong>"))
+
   ########################
   ### Create reactives ###
   ########################
@@ -64,7 +71,6 @@ function(input, output, session) {
   
   # Store parsed files and allow observers to know when it changes
   parsedFiles = reactive({
-    #browser()
     gc = globalConfig()
     parseFilenames(list.files())
   })
@@ -81,6 +87,11 @@ function(input, output, session) {
     return(unique(fileList))
   })
   
+  # Logical reactive values for each rubric's status
+  for (problem in 1:PROBLEM_COUNT) {
+    eval(parse(text=paste0("rubric", problem, "Dirty = reactiveVal(FALSE)")))
+  }
+  
   ########################
   ### Create observers ###
   ########################
@@ -93,23 +104,31 @@ function(input, output, session) {
   })
   
   observeEvent(rosterFileName(), {
-    #browser()
-    rname = rosterFileName()
-    if (!is.null(rname)) {
-      gc = globalConfig()
-      newDir = dirname(rname)
-      #browser()
-      globalConfig(updateGlobalConfig(gc, list(rosterDirectory=newDir)))
-      updateTextInput(session, "gcrosterDirectory", value=newDir)
-      if (rname == "") {
-        shinyalert("No roster file", "No roster found in the usual places!",
-                   type = "warning")
-        roster(NULL)
-      } else {
-        newRoster = getRoster(rname)
-        roster(newRoster)
-      }
+    # A supposed roster file was found, but it may not be a valid roster file,
+    # so first try to read it.
+    rostName = rosterFileName()
+    if (rostName == "") {
+      newRoster = NULL
+    } else {
+      newRoster = getRoster(rostName)
     }
+    
+    
+    if (is.null(newRoster)) {
+      if (rostName != "") rosterFileName("")
+      #shinyalert("No roster file", "No roster found in the usual places!",
+      #           type = "warning")
+    } else {
+      # Update global config's 'rosterDirectory' to point to this roster
+      gc = globalConfig()
+      rostDir = dirname(rostName)
+      globalConfig(updateGlobalConfig(gc, list(rosterDirectory=rostDir)))
+      # Update Assignment tab to show this roster's location
+      updateTextInput(session, "gcrosterDirectory", value=rostDir)
+    }
+    
+    # Let the app know that there is a new roster (or none)
+    roster(newRoster)
   })
   
   observeEvent(roster(), {
@@ -150,10 +169,27 @@ function(input, output, session) {
     # Update rubrics
     rubNew = getRubrics()
     rubrics(rubNew)
+    
   }, ignoreInit=TRUE)
 
   observeEvent(rubrics(), {
+    rubNow = rubrics()
     eval(parse(text=probUpdateCode))
+    #eval(parse(text=totalPointsCode))
+    #source(textConnection(probUpdateCode), local=TRUE)
+    #source(textConnection(totalPointsCode), local=TRUE)
+    total = 0
+    total = total + rubNow[[1]][['initialPoints1']]
+    total = total + rubNow[[2]][['initialPoints2']]
+    total = total + rubNow[[3]][['initialPoints3']]
+    total = paste0('<strong>Total points: ', total, '</strong>')
+    shinyjs::html(id='totalPoints', total)
+    # It's hard to figure out a way to make the 'submitProblemRubric#' buttons
+    # be enabled by a change to any element on the page, and also be disabled
+    # after a new set of values is read from a file and the widgets are updated.
+    # This half second delay works!
+    for (problem in 1:PROBLEM_COUNT)
+      eval(parse(text=paste0("shinyjs::delay(500, shinyjs::disable('submitProblemRubric", problem,"'))")))
   })
     
   observeEvent(codingFiles(), {
@@ -167,14 +203,13 @@ function(input, output, session) {
     cfSel = input$codeFileCheckboxes
     updateRadioButtons(session, "codefile",
                              choices=cfSel, inline=TRUE)
-  })
+  }, ignoreInit=TRUE)
     
   # Construct observer for all inputs related to global configuration
   observeEvent(
     eval(parse(text=paste0("c(",
                            paste0("input$gc", names(GLOBAL_CONFIG_IDS), collapse=", "),
                            ")"))), {
-    browser()
     widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
     names(widgetValues) = names(GLOBAL_CONFIG_IDS)
     for (w in names(widgetValues))
@@ -187,31 +222,49 @@ function(input, output, session) {
   
   # Construct observer for all inputs in each problem configuration tab
   for (problem in 1:PROBLEM_COUNT) {
-    eval(parse(text=paste0("observeEvent(c(",
-                           paste0("input$", problemInputIds[[problem]], collapse=", "),
-                           "), {",
-                           "shinyjs::enable('submitProblemRubric", problem, "');",
-                           "}, ignoreInit=TRUE)")))
+    eval(parse(text=c("observeEvent(c(",
+                      paste0("input$", problemInputIds[[problem]], collapse=", "),
+                      "), {",
+                      paste0("shinyjs::enable('submitProblemRubric", problem, "')"),
+                      "}, ignoreInit=TRUE)")))
   }
 
   # Construct observer for each 'submitProblemRubric'
   for (problem in 1:PROBLEM_COUNT) {
     assigns = paste0("lst[['", problemInputIds[[problem]], "']] = ",
-                           "input$", problemInputIds[[problem]], collapse="\n")
-    eval(parse(text=paste0("observeEvent(",
-                           paste0("input$", 'submitProblemRubric', problem),
-                           ", {",
-                           "shinyjs::disable('", paste0('submitProblemRubric', problem), "');",
-                           "n = length(problemInputIds[[", problem, "]]);",
-                           "lst = vector('list', n);",
-                           "names(lst) = problemInputIds[[", problem, "]];",
-                           assigns,
-                           ";saveRubric(", problem, ", lst)",
-                           "}, ignoreInit=TRUE)")))
+                     "input$", problemInputIds[[problem]]) #, collapse="\n")
+    eval(parse(text=c(paste0("observeEvent(input$", 'submitProblemRubric', problem, ", {"),
+                      paste0("shinyjs::disable('submitProblemRubric", problem, "')"),
+                      paste0("n = length(problemInputIds[[", problem, "]])"),
+                      "lst = vector('list', n)",
+                      paste0("names(lst) = problemInputIds[[", problem, "]]"),
+                      assigns,
+                      paste0("rubric", problem, "Dirty(TRUE)"),
+                      paste0("saveRubric(", problem, ", lst)"),
+                      "}, ignoreInit=TRUE)")))
   }
   
+  # Save rubrics if any are dirty
+  eval(parse(text=c("observeEvent(",
+                    paste0("c(", paste0("rubric", 1:PROBLEM_COUNT, "Dirty()", collapse=", "),
+                           "), {"),
+                    "rnames = names(rubricDefaults)",
+                    "rubNew = vector('list', PROBLEM_COUNT)",
+                    "n = length(rubricDefaults)",
+                    "for (problem in 1:PROBLEM_COUNT) {",
+                    "  rubNew[[problem]] = vector('list', n)",
+                    "  names(rubNew[[problem]]) = paste0(rnames, problem)",
+                    "  for (i in 1:n) {",
+                    "    widgNum = paste0(rnames[i], problem)",
+                    "    eval(parse(text=paste0('rubNew[[problem]][[i]] = input$', widgNum)))",
+                    "  }",
+                    "}",
+                    "rubrics(rubNew)",
+                    "}, ignoreInit=TRUE)")
+  ))
+  
+  
   observeEvent(input$gccourseId, {
-    #browser()
     cid = input$gccourseId
     if (cid != globalConfig()[["courseId"]]) {
       gc = globalConfig()
@@ -240,7 +293,6 @@ function(input, output, session) {
   #   cf = codingFiles()
   #   validate(need(cf), "No coding files in current folder")
   #   cat(paste(cf, collapse=", "))n
-  
   # })
   
   

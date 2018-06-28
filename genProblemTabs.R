@@ -147,7 +147,7 @@ rubricDefaults = getInputDefaults(probPanelCodeOne)
 # (note: could be updated here from a user global file)
 
 # Code for updating Problem rubric widgets in an observer
-probUpdateCode = "rubNow = rubrics()"
+probUpdateCode = character(0)
 properCase = function(x) paste0(toupper(substring(x, 1, 1)), substring(x, 2))
 for (index in 1:length(rubricDefaults)) {
   name = names(rubricDefaults)[index]
@@ -168,3 +168,13 @@ for (index in 1:length(rubricDefaults)) {
     probUpdateCode = c(probUpdateCode, code)
   }
 }
+
+# Code for updating total points across problems (from 'initialPoints#')
+totalPointsCode = "total = 0"
+for (problem in 1:PROBLEM_COUNT) {
+  totalPointsCode = c(totalPointsCode,
+                      paste0("total = total + input$initialPoints", problem))
+}
+totalPointsCode = c(totalPointsCode, 
+                    paste0("total = paste0('<strong>Total points: ', total, '</strong>')"))
+totalPointsCode = c(totalPointsCode, paste0("shinyjs::html(id='totalPoints', total)"))
