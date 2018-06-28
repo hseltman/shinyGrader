@@ -299,6 +299,10 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 getRoster = function(rosterFileName) {
   if (is.null(rosterFileName) || rosterFileName == "") return(NULL)
   
+  # Determine if the Shiny is running yet, to decide if shinyalert() will work
+  inSession = exists("session", env=parent.env(parent.frame())) &&
+              is(get("session", env=parent.env(parent.frame())), "ShinySession")
+  
   # Get names of columns to read from a setup.R constant
   rosterNames = names(CANVAS_ROSTER_NAMES)
   canvasNames = as.character(CANVAS_ROSTER_NAMES)
@@ -312,27 +316,30 @@ getRoster = function(rosterFileName) {
   if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
   roster = try(read.csv(textConnection(roster), as.is=TRUE))
   if (is(roster, "try-error")) return(NULL)
+  # Note: no usage of encoding="UTF-8" fixes the byte-order-mark that may be present
+  if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.")
+    names(roster)[1] = substring(names(roster)[1], 10)
 
   # Get the correct column names for shinyGrader
   badColNames = !make.names(canvasNames) %in% names(roster)
   if (any(badColNames)) {
+    #browser()
     msg = paste0("missing from roster: ",
                  paste(canvasNames[badColNames], collapse=", "))
-    if (exists("session")) {
-      shinyalert("Bad roster file", msg, type = "warning")
+    if (inSession) {
+      shinyalert(paste("Bad roster file (", rosterFileName, ") ", msg), type = "warning")
     } else {
-      warning("Bad roster file: ", msg)
+      warning("Bad roster file: (", rosterFileName, ") ", msg)
     }
     return(NULL)
   }
-
+  
   # Rename the columns to shinyGrader column names
   roster = try(roster[, make.names(canvasNames)], silent=TRUE)
   if (is(roster, "try-error")) {
     msg = paste0("Roster columns ", paste(canvasNames, collapse=", "),
                  " not all in ", rosterFileName)
-    
-    if (exists("session")) {
+    if (inSession) {
       shinyalert("Bad roster file", msg, type = "warning")
     } else {
       warning("Bad roster file: ", msg)
