@@ -140,9 +140,10 @@ initializeGlobalConfig = function(HOME) {
   }
   
   # Merge in user defaults from the current directory
-  updated = FALSE
   gcHere = file.exists(GLOBAL_CONFIG_NAME)
+  updated = TRUE
   if (gcHere) {
+    updated = FALSE
     globalText = try(readLines(GLOBAL_CONFIG_NAME))
     if (!is(globalText, "try-error")) {
       lst = textToConfigList(globalText,
