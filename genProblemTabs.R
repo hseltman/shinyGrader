@@ -145,3 +145,26 @@ getInputDefaults = function(code) {
 # store rubric defaults
 rubricDefaults = getInputDefaults(probPanelCodeOne)
 # (note: could be updated here from a user global file)
+
+# Code for updating Problem rubric widgets in an observer
+probUpdateCode = "rubNow = rubrics()"
+properCase = function(x) paste0(toupper(substring(x, 1, 1)), substring(x, 2))
+for (index in 1:length(rubricDefaults)) {
+  name = names(rubricDefaults)[index]
+  type = properCase(attr(rubricDefaults[[index]], "type"))
+  for (problem in 1:PROBLEM_COUNT) {
+    nameNum = paste0(name, problem)
+    if (type == "Select") {
+      code = paste0("update", type, "Input(",
+                    "session=session, ",
+                    "inputId='", nameNum, "', ",
+                    "select=rubNow[[", problem, "]][['", nameNum, "']])")
+    } else {
+      code = paste0("update", type, "Input(",
+                      "session=session, ",
+                      "inputId='", nameNum, "', ",
+                      "value=rubNow[[", problem, "]][['", nameNum, "']])")
+    }
+    probUpdateCode = c(probUpdateCode, code)
+  }
+}

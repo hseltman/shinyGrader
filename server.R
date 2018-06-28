@@ -160,11 +160,12 @@ function(input, output, session) {
     # Update rubrics
     rubNew = getRubrics()
     rubrics(rubNew)
-    updateTextInput(session, "filesToCopy1", value=rubNew[[1]][["filesToCopy1"]])
-    updateTextInput(session, "filesToCopy2", value=rubNew[[2]][["filesToCopy2"]])
-    updateTextInput(session, "filesToCopy3", value=rubNew[[3]][["filesToCopy3"]])
   }, ignoreInit=TRUE)
-  
+
+  observeEvent(rubrics(), {
+    eval(parse(text=probUpdateCode))
+  })
+    
   observeEvent(codingFiles(), {
     cf = codingFiles()
     req(cf)
