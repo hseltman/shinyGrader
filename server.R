@@ -139,20 +139,10 @@ function(input, output, session) {
     }
     shinyjs::html(id="currentFolder", 
                   paste0("<strong>", newDir, "</strong>"))
-    #browser()
-    # Make or read global configuration, always starting with
-    # initializeGlobalConfig() in case user edits are bad,
+
+    # Make or read global configuration
     gc = initializeGlobalConfig(globalLoc)
-    text = try(suppressWarnings(readLines(GLOBAL_CONFIG_NAME)))
-    if (!is(text, "try-error")) {
-      heregc = textToConfigList(text, names(GLOBAL_CONFIG_IDS),
-                                source=GLOBAL_CONFIG_NAME)
-      if (!is.null(heregc)) {
-        gc = updateGlobalConfig(gc, heregc)
-        globalConfig(gc)
-      }
-    }
-    
+
     # Update courseId    
     cid = gc[["courseId"]]
     updateTextInput(session, "courseIdText", value=cid)
