@@ -31,12 +31,18 @@ if (staticRosterFileName == "") {
 } else {
   staticRosterDirectory = dirname(staticRosterFileName)
   staticRoster = getRoster(staticRosterFileName)
-  if (staticRosterDirectory != initialGCValues[match("rosterDirectory",
-                                                     names(GLOBAL_CONFIG_IDS))]) {
-    staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
-                                            list(rosterDirectory=staticRosterDirectory))
+  if (is.null(staticRoster)) {
+    staticRosterDirectory = ""
+    staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
+    staticRosterBaseName = ""
+  } else {
+    if (staticRosterDirectory != initialGCValues[match("rosterDirectory",
+                                                       names(GLOBAL_CONFIG_IDS))]) {
+      staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
+                                              list(rosterDirectory=staticRosterDirectory))
+    }
+    staticRosterBaseName = basename(attr(staticRoster, "file"))
   }
-  staticRosterBaseName = basename(attr(staticRoster, "file"))
 }
 
 staticRubrics = getRubrics()
