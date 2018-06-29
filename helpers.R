@@ -314,12 +314,19 @@ getRoster = function(rosterFileName, instructorEmail="") {
 } # end getRoster()
 
 
-# Parse filenames to get a portion of the filename from
-# list.files() using both globalConfig[["filenameFormat"]]
-# and "sfne".  The meanings of the codes come from
+# Parse filenames to get various portion of the filename from a
+# list.files() result using Canvas filenaming conventions
+# (as of June 2018).  The meanings of the codes come from
 # FILE_FORMAT_CODES and FILE_FORMAT_RE.
 # It is assumed that the filename code segments are separated
 # by 'punct' (unless in NO_PRIOR_PUNCTUATION).
+# Files not produced by Canvas are ignored.
+#
+# The intention is that the user can name a file "solution_0_0_name.ext".
+#
+# The output is a dataframe with columns: original, studentName,
+# lateFlag, studentIdNumber, uniqueFileNumber, baseFileName,
+# resubmitNumber, and fileExtension.
 # 
 parseFilenames = function(filenames=list.files(), punct="[_]") {
   ff = CANVAS_FILENAME_FORMAT
@@ -351,7 +358,8 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
   
   # Obtain detailed filename information for specified filename formats
   nonZeroLen = function(x) length(x) > 0
-  matchFull = regmatches(filenames, regexec(re, filenames))
+  RER = regexec(re, filenames)
+  matchFull = regmatches(filenames, RER)
   matchFull = matchFull[sapply(matchFull, nonZeroLen)]
   if (length(matchFull) == 0) {
     matchDf = NULL
@@ -364,7 +372,8 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
   # Cleanup data
   matchDf$resubmitNumber = gsub("-", "", matchDf$resubmitNumber)
   matchDf$lateFlat = gsub("_", "", matchDf$resubmitNumber)
-  
+  matchDf = cbind(original = filenames[sapply(RER, function(x) x[1]>0)],
+                  matchDf)
   return(matchDf)
 } # end parseFilenames()
 
