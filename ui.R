@@ -49,9 +49,9 @@ fluidPage(
     tabPanel("Grading",
       p("Edit specific configuration"),
       p("Grade one"),
-      fluidRow(column(5, disabled(selectInput("studentDropdown", "Students", "(none)", width="40%"))),
+      fluidRow(column(5, disabled(selectInput("selectStudent", "Students", "(none)", width="100%"))),
                column(5, verbatimTextOutput("filesForOne")),
-               column(2, disabled(actionButton("runOne1", "Run one student")))),
+               column(2, disabled(actionButton("runOne", "Run one student")))),
       p("Grade all"),
       p("Grading output")
     ), # end "Grading" tabPanel

@@ -70,6 +70,14 @@ function(input, output, session) {
   # Store roster and allow observers to know when it changes
   roster = reactiveVal(staticRoster)
   
+  # Store student "name (email)" and allow observers to know when it changes
+  if (is.null(staticRoster)) {
+    students = reactiveVal("(none)")
+  } else {
+    students = reactiveVal(paste0(staticRoster[["Name"]],
+                                  " (", staticRoster[["Email"]], ")"))
+  }
+  
   # Store rubrics and allow observers to know when they change
   rubrics = reactiveVal(staticRubrics)
   
@@ -114,7 +122,7 @@ function(input, output, session) {
     if (rostName == "") {
       newRoster = NULL
     } else {
-      newRoster = getRoster(rostName)
+      newRoster = getRoster(rostName, globalConfig()[["instructorEmail"]])
     }
     
     
@@ -136,14 +144,30 @@ function(input, output, session) {
   })
   
   observeEvent(roster(), {
-    if (!is.null(roster())) {
+    if (is.null(roster())) {
+      shinyjs::html(id="currentRoster", "")
+      students("(none)")
+    } else {
       shinyjs::html(id="currentRoster", 
                     paste0("<strong>", rosterFileName(), " (",
                            nrow(roster()), " students)</strong>"))
-    } else {
-      shinyjs::html(id="currentRoster", "")
+      rost = roster()
+      students(paste0(rost[["Name"]], " (", rost[["Email"]], ")"))
     }
   }, ignoreNULL=FALSE)
+  
+  observeEvent(students(), {
+    st = students()
+    if (length(st) == 1 && st == "(none)") {
+      updateSelectInput(session, "selectStudent", choices=st, selected="(none)")
+      shinyjs::disable("selectStudent")
+      shinyjs::disable("runOne")
+    } else {
+      updateSelectInput(session, "selectStudent", choices=st, selected=st[1])
+      shinyjs::enable("selectStudent")
+      shinyjs::enable("runOne")
+    }
+  })
   
   observeEvent(input$changeFolder, {
     #req(input$changeFolder)
