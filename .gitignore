@@ -40,3 +40,5 @@ global.pdf
 fake.txt
 shinyGrader.config
 *.Rdata
+solution_0_0_hw1.R
+solution_0_0_hw2.R
