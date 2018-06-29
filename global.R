@@ -28,7 +28,7 @@ if (staticRosterFileName == "") {
   staticRosterBaseName = ""
 } else {
   staticRosterDirectory = dirname(staticRosterFileName)
-  staticRoster = getRoster(staticRosterFileName)
+  staticRoster = getRoster(staticRosterFileName, staticGlobalConfig[["instructorEmail"]])
   if (is.null(staticRoster)) {
     staticRosterDirectory = ""
     staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))

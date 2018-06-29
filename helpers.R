@@ -216,7 +216,7 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 } # end findRoster()
 
 
-# Read a class roster file and return a data frame.
+# Read a class roster file and instructorEmail and return a data frame.
 #
 # For Canvas, use the Canvas "Grades / Export" action to create the roster
 # file.  It is important to use the Canvas roster rather than the SIO
@@ -235,8 +235,14 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 # and 'Email' equal to instructorId from the global config is always added
 # at the top.
 #
-getRoster = function(rosterFileName) {
-  if (is.null(rosterFileName) || rosterFileName == "") return(NULL)
+getRoster = function(rosterFileName, instructorEmail="") {
+  # Fake instructor email
+  fake = FAKE_INSTRUCTOR_ROSTER
+  fake[["Email"]] = instructorEmail
+  
+  if (is.null(rosterFileName) || rosterFileName == "") {
+    return(fake)
+  }
   
   # Determine if the Shiny is running yet, to decide if shinyalert() will work
   inSession = exists("session", env=parent.env(parent.frame())) &&
@@ -262,7 +268,6 @@ getRoster = function(rosterFileName) {
   # Get the correct column names for shinyGrader
   badColNames = !make.names(canvasNames) %in% names(roster)
   if (any(badColNames)) {
-    #browser()
     msg = paste0("missing from roster: ",
                  paste(canvasNames[badColNames], collapse=", "))
     if (inSession) {
@@ -287,8 +292,8 @@ getRoster = function(rosterFileName) {
   }
   names(roster) = rosterNames
   attr(roster, "file") = rosterFileName
-  
-  return(roster)
+
+    return(rbind(fake, roster))
 } # end getRoster()
 
 

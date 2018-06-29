@@ -75,6 +75,11 @@ CANVAS_ROSTER_NAMES = list(
   Email = "SIS Login ID"
 )
 
+# Fake roster for instructor
+FAKE_INSTRUCTOR_ROSTER = data.frame(0, "Instructor", "")
+names(FAKE_INSTRUCTOR_ROSTER) = names(CANVAS_ROSTER_NAMES)
+attr(FAKE_INSTRUCTOR_ROSTER, "file") = file.path(getwd(), "fakeRoster")
+
 # Defaults for the Canvas Roster (from Grades / Export; best at start of course)
 CANVAS_ROSTER_DEFAULTS = list(
   rosterRE = "^.*Grades-COURSEID-[0-9A-Z].csv$",
