@@ -74,8 +74,10 @@ function(input, output, session) {
   if (is.null(staticRoster)) {
     students = reactiveVal("(none)")
   } else {
+    shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
     students = reactiveVal(paste0(staticRoster[["Name"]],
-                                  " (", staticRoster[["Email"]], ")"))
+                                  " (", staticRoster[["canvasName"]],
+                                  "; ", shortEmail, ")"))
   }
   
   # Store rubrics and allow observers to know when they change
@@ -152,7 +154,9 @@ function(input, output, session) {
                     paste0("<strong>", rosterFileName(), " (",
                            nrow(roster()), " students)</strong>"))
       rost = roster()
-      students(paste0(rost[["Name"]], " (", rost[["Email"]], ")"))
+      shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
+      students(paste0(rost[["Name"]], " (", rost[["canvasName"]],
+                      "; ", shortEmail, ")"))
     }
   }, ignoreNULL=FALSE)
   

@@ -291,6 +291,23 @@ getRoster = function(rosterFileName, instructorEmail="") {
     return(NULL)
   }
   names(roster) = rosterNames
+  
+  # Add column that matches file naming in Canvas
+  two = strsplit(roster$Name, ",")
+  if (any(sapply(two, length) != 2)) {
+    msg = "Names in Canvas roster not in last, first format!"
+    if (inSession) {
+      shinyalert("Bad roster file", msg, type = "warning")
+    } else {
+      warning("Bad roster file: ", msg)
+    }
+    return(NULL)
+  }
+  roster$canvasName = sapply(two,
+                             function(LF) {
+                               tolower(paste0(gsub(" ", "", LF[1]),
+                                              gsub(" ", "", LF[2])))
+                             })
   attr(roster, "file") = rosterFileName
 
     return(rbind(fake, roster))
