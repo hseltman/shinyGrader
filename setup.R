@@ -76,9 +76,11 @@ CANVAS_ROSTER_NAMES = list(
 )
 
 # Fake roster for instructor
-FAKE_INSTRUCTOR_ROSTER = data.frame(0, "Instructor", "")
-names(FAKE_INSTRUCTOR_ROSTER) = names(CANVAS_ROSTER_NAMES)
-FAKE_INSTRUCTOR_ROSTER$canvasName = "solution"
+# Names must match CANVAS_ROSTER_NAMES plus 'CanvasName'
+FAKE_INSTRUCTOR_ROSTER = data.frame(ID=0,
+                                    Name = I("Instructor"),
+                                    Email = I(""),
+                                    CanvasName = I("solution"))
 attr(FAKE_INSTRUCTOR_ROSTER, "file") = file.path(getwd(), "fakeRoster")
 
 # Defaults for the Canvas Roster (from Grades / Export; best at start of course)

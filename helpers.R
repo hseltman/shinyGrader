@@ -303,11 +303,11 @@ getRoster = function(rosterFileName, instructorEmail="") {
     }
     return(NULL)
   }
-  roster$canvasName = sapply(two,
-                             function(LF) {
-                               tolower(paste0(gsub(" ", "", LF[1]),
-                                              gsub(" ", "", LF[2])))
-                             })
+  roster$CanvasName = I(sapply(two,
+                               function(LF) {
+                                 tolower(paste0(gsub(" ", "", LF[1]),
+                                                gsub(" ", "", LF[2])))
+                               }))
   attr(roster, "file") = rosterFileName
 
     return(rbind(fake, roster))
@@ -372,7 +372,7 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
   # Cleanup data
   matchDf$resubmitNumber = gsub("-", "", matchDf$resubmitNumber)
   matchDf$lateFlat = gsub("_", "", matchDf$resubmitNumber)
-  matchDf = cbind(original = filenames[sapply(RER, function(x) x[1]>0)],
+  matchDf = cbind(original = I(as.character(filenames)[sapply(RER, function(x) x[1]>0)]),
                   matchDf)
   return(matchDf)
 } # end parseFilenames()

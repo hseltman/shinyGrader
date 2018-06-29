@@ -20,6 +20,8 @@ if (globalLoc == "") stop("cannot get name of HOME directory")
 # then using it in the 'server.R' and 'ui.R' files to initialize a
 # reactiveVal().  The same applies to the initial roster.
 staticGlobalConfig = initializeGlobalConfig(globalLoc)
+staticRosterFileName = findRoster(staticGlobalConfig[["courseId"]],
+                                  staticGlobalConfig[["rosterDirectory"]])
 if (staticRosterFileName == "") {
   staticRosterDirectory = ""
   staticRoster = NULL

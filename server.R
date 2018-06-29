@@ -76,7 +76,7 @@ function(input, output, session) {
   } else {
     shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
     students = reactiveVal(paste0(staticRoster[["Name"]],
-                                  " (", staticRoster[["canvasName"]],
+                                  " (", staticRoster[["CanvasName"]],
                                   "; ", shortEmail, ")"))
   }
   
@@ -84,22 +84,22 @@ function(input, output, session) {
   rubrics = reactiveVal(staticRubrics)
   
   # Store parsed files and allow observers to know when it changes
-  parsedFiles = reactive({
-    gc = globalConfig()
-    parseFilenames(list.files())
+  allCanvasFiles = reactive({
+    wd = wd()  # control when this runs
+    return(parseFilenames(list.files()))
   })
   
   # Store coding files and allow observers to know when it changes
-  codingFiles = reactive({
-    pf = parsedFiles()
-    fileList = c()
-    if (!is.null(pf)) {
-      temp = pf[tolower(pf$fileExtension) %in% c(".r", ".rmd", ".sas", ".py"), ]
-      fileList = apply(temp, 1, function(r) paste0(r["baseFileName"],
-                                                   r["fileExtension"]))
-    }
-    return(unique(fileList))
-  })
+  # codingFiles = reactive({
+  #   pf = parsedFiles()
+  #   fileList = c()
+  #   if (!is.null(pf)) {
+  #     temp = pf[tolower(pf$fileExtension) %in% c(".r", ".rmd", ".sas", ".py"), ]
+  #     fileList = apply(temp, 1, function(r) paste0(r["baseFileName"],
+  #                                                  r["fileExtension"]))
+  #   }
+  #   return(unique(fileList))
+  # })
   
   # Logical reactive values for each rubric's status
   for (problem in 1:PROBLEM_COUNT) {
@@ -155,7 +155,7 @@ function(input, output, session) {
                            nrow(roster()), " students)</strong>"))
       rost = roster()
       shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
-      students(paste0(rost[["Name"]], " (", rost[["canvasName"]],
+      students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
                       "; ", shortEmail, ")"))
     }
   }, ignoreNULL=FALSE)
@@ -224,12 +224,12 @@ function(input, output, session) {
       eval(parse(text=paste0("shinyjs::delay(500, shinyjs::disable('submitProblemRubric", problem,"'))")))
   })
     
-  observeEvent(codingFiles(), {
-    cf = codingFiles()
-    req(cf)
-    #updateCheckboxGroupInput(session, "codeFileCheckboxes",
-    #                         choices=cf, inline=TRUE)
-  })
+  # observeEvent(codingFiles(), {
+  #   cf = codingFiles()
+  #   req(cf)
+  #   #updateCheckboxGroupInput(session, "codeFileCheckboxes",
+  #   #                         choices=cf, inline=TRUE)
+  # })
 
   observeEvent(input$codeFileCheckboxes, {
     cfSel = input$codeFileCheckboxes
@@ -321,6 +321,32 @@ function(input, output, session) {
   })
   
 
+  output$filesForOne = renderPrint({
+    who = input$selectStudent
+    if (is.null(who) || who == "(none)") {
+      cat("(none)")
+    } else {
+      acf = isolate(allCanvasFiles())
+      rost = isolate(roster())
+      who = gsub("(.*)([ ][(].*)", "\\1", who)
+      id = rost$ID[rost$Name == who]
+      if (length(id) != 1) {
+        shinyjs::shinyalert("No match in roster,",
+                            paste0(who, "is not in the roster"))
+        cat("(none)")
+      } else {
+        files = acf$original[acf$studentIdNumber == id]
+        if (length(files) == 0) {
+          cat("This student has no files.")
+        } else {
+          cat("Files:\n")
+          cat(files, sep="\n")
+        }
+      }
+    }
+  })
+  
+  
   # output$codeFileList = renderPrint({
   #   cf = codingFiles()
   #   validate(need(cf), "No coding files in current folder")
