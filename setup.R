@@ -51,46 +51,21 @@ OPTIONAL_FIELDS = c("f", "n")
 NO_PRIOR_PUNCTUATION = c("n", "e")
 #
 CANVAS_FILENAME_FORMAT = "sfiubne"
-# What to substitute when "Canvas" is found in
-# a globalConfig RE entry.
-#CANVAS_RE_SUBSTITUTE = list(
-#  f = c("lateFlagRE", CANVAS_LATE_RE),
-#  n = c("resubmitRE", CANVAS_RESUBMIT_RE)
-#)
 
 # Currently allowed global configuration names and text
 GLOBAL_CONFIG_IDS = list(
-  rosterDirectory = "Roster Directory",
   courseId = "Course Id",
-  assignmentName = "Assignment Name"
-  #rosterRE = "Regular expression to find rosters",
-  #rosterIdCol = "Roster ID column",
-  #rosterNameCol = "Roster name column",
-  #rosterFirstNameCol = "Roster first name column",
-  #rosterFamilyNameCol = "Roster family name column",
-  #rosterEmailCol = "Roster email column",
-  #filenameFormat = "Filename format",
-  #filenameNameFormat = "Filename name format",
-  #lateFlagRE = "Late flag regular expression",
-  #resubmitRE = "Resubmit regular expression"
+  assignmentName = "Assignment Name",
+  rosterDirectory = "Roster Directory",
+  instructorEmail = "Instructor Email"
 )
 
 # Currently allowed global configuration defaults
 GLOBAL_CONFIG_DEFAULTS = list(
-  rosterDirectory = "",
   courseId = "",
-  assignmentName = ""
-  #emailSuffix = "",
-  #rosterRE = "Canvas",
-  #rosterIdCol = "Canvas",
-  #rosterNameCol = "Canvas",
-  #rosterFirstNameCol = "Canvas",
-  #rosterFamilyNameCol = "Canvas",
-  #rosterEmailCol = "Canvas",
-  #filenameFormat = "Canvas",
-  #filenameNameFormat = "Canvas",
-  #lateFlagRE = "Canvas",
-  #resubmitRE = "Canvas"
+  assignmentName = "",
+  rosterDirectory = "",
+  instructorEmail = ""
 )
 
 # Element name is for shinyGrader; value is for Canvas Roster
@@ -124,7 +99,7 @@ PROBLEM_COUNT = 3
 initializeGlobalConfig = function(HOME) {
   # Start with hardcoded defaults
   gc = GLOBAL_CONFIG_DEFAULTS
-  
+
   # Merge in any system-wide user defaults
   globalFileName = file.path(HOME, GLOBAL_CONFIG_NAME)
   if (file.exists(globalFileName)) {
@@ -138,7 +113,7 @@ initializeGlobalConfig = function(HOME) {
       }
     }
   }
-  
+
   # Merge in user defaults from the current directory
   gcHere = file.exists(GLOBAL_CONFIG_NAME)
   updated = TRUE
@@ -156,7 +131,7 @@ initializeGlobalConfig = function(HOME) {
     } # end if text read from global config in current directory
   } # end if global config found in current directory
   
-  # Expand 'rosterDirectory'
+  # Change blank 'rosterDirectory' to current directory
   if (any(names(gc) == "rosterDirectory")) {
     if (gc[['rosterDirectory']] == "") {
       updated = TRUE

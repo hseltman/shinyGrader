@@ -16,12 +16,10 @@ globalLoc = if (envLoc == "") Sys.getenv("HOME") else envLoc
 if (globalLoc == "") stop("cannot get name of HOME directory")
 
 # Complex logic is best accomplished by calling initializeGlobalConfig()
-# here, and then using it in the server.R file to initialize a reactiveVal().
-# The same applies to the initial roster.
+# and storing these initial results in 'staticGlobalConfig' here, and
+# then using it in the 'server.R' and 'ui.R' files to initialize a
+# reactiveVal().  The same applies to the initial roster.
 staticGlobalConfig = initializeGlobalConfig(globalLoc)
-initialGCValues = as.character(staticGlobalConfig[names(GLOBAL_CONFIG_IDS)])
-staticRosterFileName = findRoster(staticGlobalConfig$courseId,
-                                  staticGlobalConfig$rosterDirectory)
 if (staticRosterFileName == "") {
   staticRosterDirectory = ""
   staticRoster = NULL
@@ -36,8 +34,7 @@ if (staticRosterFileName == "") {
     staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
     staticRosterBaseName = ""
   } else {
-    if (staticRosterDirectory != initialGCValues[match("rosterDirectory",
-                                                       names(GLOBAL_CONFIG_IDS))]) {
+    if (staticRosterDirectory != staticGlobalConfig[["rosterDirectory"]]) {
       staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
                                               list(rosterDirectory=staticRosterDirectory))
     }

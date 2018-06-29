@@ -177,7 +177,7 @@ updateStatus = function(status) {
 # If more than one roster matches in the first location with multiple
 # roster files, the most recently modified roster file is selected.
 #
-# Returns full path of the matching filename (or NULL).
+# Returns full matching filename (or NULL).
 #
 findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
   if (courseId == "") return("")
@@ -212,8 +212,8 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
     }
   }
   rosterFileName = rownames(rosterFiles)[which.max(rosterFiles$mtime)]
-  return(rosterFileName)
-}
+  return(file.path(loc, rosterFileName))
+} # end findRoster()
 
 
 # Read a class roster file and return a data frame.
@@ -230,8 +230,10 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 # global configuration by just using the word "Canvas".
 #
 # The return value is a data.frame with columns "ID", "Name", and "Email"
-# and a "file" attribute containing the roster location or NULL if no
-# roster is found.
+# and a "file" attribute containing the roster location or NULL if the
+# file is not a valid roster file.  A student named "solution" with ID=0
+# and 'Email' equal to instructorId from the global config is always added
+# at the top.
 #
 getRoster = function(rosterFileName) {
   if (is.null(rosterFileName) || rosterFileName == "") return(NULL)

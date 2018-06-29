@@ -27,9 +27,15 @@ fluidPage(
              HTML("&nbsp;"),
              p(id="totalPoints", "Total points: 0"),
              h3("Settings:"),
-             textInput("gccourseId", "Course Id (e.g., 36200)"),
-             textInput("gcassignmentName", "Assignment Name", width="100%"),
-             textInput("gcrosterDirectory", "Roster Directory", width="100%"),
+             textInput("gccourseId", "Course Id (e.g., 36200)",
+                       value=staticGlobalConfig[["courseId"]]),
+             textInput("gcassignmentName", "Assignment Name", 
+                       value=staticGlobalConfig[["assignmentName"]], width="100%"),
+             textInput("gcrosterDirectory", "Roster Directory",
+                       value=staticGlobalConfig[["rosterDirectory"]],
+                       width="100%"),
+             textInput("gcinstructorEmail", "Instructor Email",
+                       value=staticGlobalConfig[["instructorEmail"]], width="100%"),
              p(HTML("&nbsp;")),
              HTML(paste("<small>&Dagger;: To change assignment folder,",
                         "select any file in the assignment folder.</small>"))
@@ -43,6 +49,9 @@ fluidPage(
     tabPanel("Grading",
       p("Edit specific configuration"),
       p("Grade one"),
+      fluidRow(column(5, disabled(selectInput("studentDropdown", "Students", "(none)", width="40%"))),
+               column(5, verbatimTextOutput("filesForOne")),
+               column(2, disabled(actionButton("runOne1", "Run one student")))),
       p("Grade all"),
       p("Grading output")
     ), # end "Grading" tabPanel

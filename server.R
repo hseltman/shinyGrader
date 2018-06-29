@@ -30,10 +30,14 @@ function(input, output, session) {
   ### Complete User Interface ###
   ###############################
   
-  updateTextInput(session=session, inputId="courseIdText",
+  updateTextInput(session=session, inputId="gccourseId",
                   value=staticGlobalConfig[["courseId"]])
   updateTextInput(session=session, inputId="gcrosterDirectory",
                   value=staticGlobalConfig[["rosterDirectory"]])
+  updateTextInput(session=session, inputId="gcassignmentName",
+                  value=staticGlobalConfig[["assignmentName"]])
+  updateTextInput(session=session, inputId="gcinstructorEmail",
+                  value=staticGlobalConfig[["instructorEmail"]])
   shinyjs::html(id="currentRoster", 
                 paste0("<strong>", staticRosterBaseName, "</strong>"))
   if (!is.null(staticRoster)) {
