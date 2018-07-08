@@ -182,7 +182,7 @@ updateStatus = function(status) {
 findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
   if (courseId == "") return("")
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
-  
+
   # Use a regular expression to find the rosters produced by Canvas
   rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
   rosterRE = sub("COURSEID", courseId, rosterRE)
@@ -211,7 +211,7 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
       if (nrow(rosterFiles) == 0) return("")
     }
   }
-  rosterFileName = rownames(rosterFiles)[which.max(rosterFiles$mtime)]
+  rosterFileName = basename(rownames(rosterFiles)[which.max(rosterFiles$mtime)])
   return(file.path(loc, rosterFileName))
 } # end findRoster()
 
