@@ -177,7 +177,7 @@ updateStatus = function(status) {
 # If more than one roster matches in the first location with multiple
 # roster files, the most recently modified roster file is selected.
 #
-# Returns full matching filename (or NULL).
+# Returns full matching filename (or "").
 #
 findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
   if (courseId == "") return("")
@@ -218,6 +218,8 @@ findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
 
 # Read a class roster file and instructorEmail and return a data frame.
 #
+# If the 'rosterFileName' is blank, return the "fake" roster.
+#
 # For Canvas, use the Canvas "Grades / Export" action to create the roster
 # file.  It is important to use the Canvas roster rather than the SIO
 # roster because it links the Canvas student id number ("ID") with the full
@@ -240,8 +242,9 @@ getRoster = function(rosterFileName, instructorEmail="") {
   fake = FAKE_INSTRUCTOR_ROSTER
   fake[["Email"]] = instructorEmail
   
-  if (is.null(rosterFileName) || rosterFileName == "") {
-    return(fake)
+  #if (is.null(rosterFileName) || rosterFileName == "") {
+  if (rosterFileName == "") {
+      return(fake)
   }
   
   # Determine if the Shiny is running yet, to decide if shinyalert() will work
@@ -259,8 +262,16 @@ getRoster = function(rosterFileName, instructorEmail="") {
   if (is(roster, "try-error")) return(NULL)
   #
   if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
-  roster = try(read.csv(textConnection(roster), as.is=TRUE))
-  if (is(roster, "try-error")) return(NULL)
+  roster = try(suppressWarnings(read.csv(textConnection(roster), as.is=TRUE)), silent=TRUE)
+  if (is(roster, "try-error")) {
+    msg = paste("Invalid roster file:", rosterFileName)
+    if (inSession) {
+      shinyalert("Bad roster file", msg, type = "warning")
+    } else {
+      warning("Bad roster file: (", rosterFileName, ") ", msg)
+    }
+    return(NULL)
+  }
   # Note: no usage of encoding="UTF-8" fixes the byte-order-mark that may be present
   if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.")
     names(roster)[1] = substring(names(roster)[1], 10)

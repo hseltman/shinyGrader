@@ -35,6 +35,9 @@ if (staticRosterFileName == "") {
     staticRosterDirectory = ""
     staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
     staticRosterBaseName = ""
+    fake = FAKE_INSTRUCTOR_ROSTER
+    fake[["Email"]] = instructorEmail
+    staticRoster = fake
   } else {
     if (staticRosterDirectory != staticGlobalConfig[["rosterDirectory"]]) {
       staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,

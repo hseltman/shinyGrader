@@ -126,15 +126,9 @@ function(input, output, session) {
   observeEvent(rosterFileName(), {
     # A supposed roster file was found, but it may not be a valid roster file,
     # so first try to read it.
-    browser()
     rostName = rosterFileName()
-    if (rostName == "") {
-      newRoster = NULL
-    } else {
-      newRoster = getRoster(rostName, globalConfig()[["instructorEmail"]])
-    }
-    
-    
+    newRoster = getRoster(rostName, globalConfig()[["instructorEmail"]])
+
     if (is.null(newRoster)) {
       if (rostName != "") rosterFileName("")
       #shinyalert("No roster file", "No roster found in the usual places!",
@@ -145,7 +139,6 @@ function(input, output, session) {
       rostDir = dirname(rostName)
       globalConfig(updateGlobalConfig(gc, list(rosterDirectory=rostDir)))
       # Update Assignment tab to show this roster's location
-      #updateTextInput(session, "rosterDirectory", value=rostDir)
     }
     
     # Let the app know that there is a new roster (or none)
@@ -334,7 +327,8 @@ function(input, output, session) {
   output$rosterInfo = renderPrint({
     roster = roster$roster
     if (is.data.frame(roster)) {
-      cat(nrow(roster), "students")
+      n = nrow(roster)
+      cat(n, " student", ifelse(n==1, "", "s"))
     } else {
       cat("No roster available")
     }
