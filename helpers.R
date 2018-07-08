@@ -167,24 +167,41 @@ updateStatus = function(status) {
 }
 
 
-# Obtain the appropriate roster file name.  A valid roster file name
-# must contain the 'courseId' and the filename must correspond to
-# the regular expression in 'rosterRD'.  We search for the roster first
-# in the 'startingLoc' (if any), then in the current directory, and
-# then in the 'HOME' directory, unless there is a ROSTER_LOCATION_FILE,
-# in which case the directories listed in that file are searched.
+# Obtain the appropriate roster file name given a courseId or find the
+# courseId from the latest roster in the current directory.
+#
+# In "alternate mode" (courseId=NULL), a courseId is returned.
+#
+# A valid roster file name must contain the 'courseId' and the filename
+# must correspond to the regular expression in 'rosterRD'.  We search
+# for the roster first in the 'startingLoc' (if any), then in the current
+# directory, and then in the 'HOME' directory, unless there is a
+# ROSTER_LOCATION_FILE, in which case the directories listed in that file
+# are searched.
 #
 # If more than one roster matches in the first location with multiple
 # roster files, the most recently modified roster file is selected.
 #
 # Returns full matching filename (or "").
 #
-findRoster = function(courseId, startingLoc=NULL, Canvas=TRUE) {
-  if (courseId == "") return("")
+findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
+  #if (courseId == "") return("")
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
 
-  # Use a regular expression to find the rosters produced by Canvas
+  # Crate a regular expression to find the rosters produced by Canvas
   rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
+  
+  # Alternate functionality: return courseId to match rosters
+  if (is.null(courseId)) {
+    rosterRE = sub("COURSEID", "[0-9]+", rosterRE)
+    rosterFiles = file.info(grep(rosterRE, list.files(), value=TRUE))
+    if (nrow(rosterFiles) == 0) return("")
+    rosterFileName = basename(rownames(rosterFiles)[which.max(rosterFiles$mtime)])
+    courseId = gsub(CANVAS_ROSTER_DEFAULTS[["rosterCourseIdRE"]], "\\2", rosterFileName)
+    return(courseId)
+  }
+  
+  # Main functionality: find roster to match courseId
   rosterRE = sub("COURSEID", courseId, rosterRE)
   
   # Start in the 'startingLoc'

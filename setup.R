@@ -85,7 +85,8 @@ attr(FAKE_INSTRUCTOR_ROSTER, "file") = file.path(getwd(), "fakeRoster")
 
 # Defaults for the Canvas Roster (from Grades / Export; best at start of course)
 CANVAS_ROSTER_DEFAULTS = list(
-  rosterRE = "^.*Grades-COURSEID-[0-9A-Z].csv$",
+  rosterRE = "^.*Grades-COURSEID-[0-9A-Z][.]csv$",
+  rosterCourseIdRE = "(^.*Grades-)([0-9]+)(-[0-9A-Z][.]csv$)",
   rosterIdCol = "ID",
   rosterNameCol = "Student",
   rosterFirstNameCol = "",
@@ -137,7 +138,13 @@ initializeGlobalConfig = function(HOME) {
         gc = modifyList(gc, lst)
       }
     } # end if text read from global config in current directory
-  } # end if global config found in current directory
+  } else { # end if global config found in current directory
+    cid = findRoster(courseId=NULL)
+    if (cid != "") {
+      updated = TRUE
+      gc = modifyList(gc, list(courseId=cid))
+    }
+  } # end if global config not found in current directory
   
   # Change blank 'rosterDirectory' to current directory
   if (any(names(gc) == "rosterDirectory")) {
@@ -145,6 +152,9 @@ initializeGlobalConfig = function(HOME) {
       updated = TRUE
       gc[['rosterDirectory']] = getwd()
     }
+  } else {
+    cat("bug check")
+    browser()
   }
   
   # Store local version of global configuration file (if new)
