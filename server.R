@@ -30,13 +30,11 @@ function(input, output, session) {
   ### Complete User Interface ###
   ###############################
   
-  updateTextInput(session=session, inputId="gccourseId",
+  updateTextInput(session=session, inputId="courseId",
                   value=staticGlobalConfig[["courseId"]])
-  updateTextInput(session=session, inputId="gcrosterDirectory",
-                  value=staticGlobalConfig[["rosterDirectory"]])
-  updateTextInput(session=session, inputId="gcassignmentName",
+  updateTextInput(session=session, inputId="assignmentName",
                   value=staticGlobalConfig[["assignmentName"]])
-  updateTextInput(session=session, inputId="gcinstructorEmail",
+  updateTextInput(session=session, inputId="instructorEmail",
                   value=staticGlobalConfig[["instructorEmail"]])
   shinyjs::html(id="currentRoster", 
                 paste0("<strong>", staticRosterBaseName, "</strong>"))
@@ -68,7 +66,12 @@ function(input, output, session) {
   rosterFileName = reactiveVal(staticRosterFileName)
   
   # Store roster and allow observers to know when it changes
-  roster = reactiveVal(staticRoster)
+  # Note: observeEvent() id not called if the new roster is the same as the old,
+  # even if it is for a different class, but we need to update the name of the
+  # roster, so a serial number is used.
+  roster = reactiveValues()
+  roster$roster = staticRoster
+  roster$serialNum = 0
   
   # Store student "name (email)" and allow observers to know when it changes
   if (is.null(staticRoster)) {
@@ -88,6 +91,9 @@ function(input, output, session) {
     wd = wd()  # control when this runs
     return(parseFilenames(list.files()))
   })
+  
+  # Flag indicating that global configuration needs to be updated
+  gcDirty = reactiveVal(FALSE)
   
   # Store coding files and allow observers to know when it changes
   # codingFiles = reactive({
@@ -120,6 +126,7 @@ function(input, output, session) {
   observeEvent(rosterFileName(), {
     # A supposed roster file was found, but it may not be a valid roster file,
     # so first try to read it.
+    browser()
     rostName = rosterFileName()
     if (rostName == "") {
       newRoster = NULL
@@ -138,22 +145,24 @@ function(input, output, session) {
       rostDir = dirname(rostName)
       globalConfig(updateGlobalConfig(gc, list(rosterDirectory=rostDir)))
       # Update Assignment tab to show this roster's location
-      updateTextInput(session, "gcrosterDirectory", value=rostDir)
+      #updateTextInput(session, "rosterDirectory", value=rostDir)
     }
     
     # Let the app know that there is a new roster (or none)
-    roster(newRoster)
-  })
+    roster$roster = newRoster
+    roster$serialNum = roster$serialNum + 1
+  }, ignoreInit=TRUE)
   
-  observeEvent(roster(), {
-    if (is.null(roster())) {
+  # Handle new roster
+  observeEvent(roster$serialNum, {
+    if (is.null(roster$roster)) {
       shinyjs::html(id="currentRoster", "")
       students("(none)")
     } else {
+      rost = roster$roster
       shinyjs::html(id="currentRoster", 
                     paste0("<strong>", rosterFileName(), " (",
-                           nrow(roster()), " students)</strong>"))
-      rost = roster()
+                           nrow(rost), " students)</strong>"))
       shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
       students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
                       "; ", shortEmail, ")"))
@@ -196,7 +205,8 @@ function(input, output, session) {
 
     # Update courseId    
     cid = gc[["courseId"]]
-    updateTextInput(session, "courseIdText", value=cid)
+    if (cid != input$courseId)
+      updateTextInput(session, "courseId", value=cid)
     
     # Update rubrics
     rubNew = getRubrics()
@@ -231,24 +241,43 @@ function(input, output, session) {
   #   #                         choices=cf, inline=TRUE)
   # })
 
+  # ????
   observeEvent(input$codeFileCheckboxes, {
     cfSel = input$codeFileCheckboxes
     updateRadioButtons(session, "codefile",
                              choices=cfSel, inline=TRUE)
   }, ignoreInit=TRUE)
     
-  # Construct observer for all inputs related to global configuration
-  observeEvent(
-    eval(parse(text=paste0("c(",
-                           paste0("input$gc", names(GLOBAL_CONFIG_IDS), collapse=", "),
-                           ")"))), {
-    widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
-    names(widgetValues) = names(GLOBAL_CONFIG_IDS)
-    for (w in names(widgetValues))
-      widgetValues[[w]] = input[[paste0("gc", w)]]
-    gc = globalConfig()
-    if (!isTRUE(all.equal(gc[names(widgetValues)], widgetValues))) {
-      globalConfig(updateGlobalConfig(gc, widgetValues))
+  # Handle change in courseId
+  observeEvent(input$courseId, {
+    cid = input$courseId
+    gcDirty(TRUE)
+    rname = findRoster(trimws(cid))
+    rosterFileName(rname)
+  }, ignoreInit=TRUE)
+  
+  # Construct observers for inputs related to global configuration
+  observeEvent(c(input$assignmentName, input$instructorEmail), {
+    gcDirty(TRUE)
+  }, ignoreInit=TRUE)
+  
+  # Update global configuration if values change
+  observeEvent(gcDirty(), {
+    if (gcDirty()) {
+      widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
+      names(widgetValues) = names(GLOBAL_CONFIG_IDS)
+      gc = globalConfig()
+      for (w in names(widgetValues)) {
+        if (w == "rosterDirectory") {
+          widgetValues[[w]] = gc[[w]]
+        } else {
+          widgetValues[[w]] = trimws(input[[w]])
+        }
+      }
+      if (!isTRUE(all.equal(gc[names(widgetValues)], widgetValues))) {
+        globalConfig(updateGlobalConfig(gc, widgetValues))
+      }
+      gcDirty(FALSE)
     }
   }, ignoreInit=TRUE)
   
@@ -296,15 +325,6 @@ function(input, output, session) {
   ))
   
   
-  observeEvent(input$gccourseId, {
-    cid = input$gccourseId
-    if (cid != globalConfig()[["courseId"]]) {
-      gc = globalConfig()
-      globalConfig(updateGlobalConfig(gc, list(courseId = trimws(cid))))
-      rname = findRoster(cid)
-      rosterFileName(rname)
-    }
-  })
 
     
   #########################
@@ -312,7 +332,7 @@ function(input, output, session) {
   #########################
   
   output$rosterInfo = renderPrint({
-    roster = roster()
+    roster = roster$roster
     if (is.data.frame(roster)) {
       cat(nrow(roster), "students")
     } else {
@@ -327,7 +347,7 @@ function(input, output, session) {
       cat("(none)")
     } else {
       acf = isolate(allCanvasFiles())
-      rost = isolate(roster())
+      rost = isolate(roster$roster)
       who = gsub("(.*)([ ][(].*)", "\\1", who)
       id = rost$ID[rost$Name == who]
       if (length(id) != 1) {
