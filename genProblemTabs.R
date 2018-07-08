@@ -146,7 +146,7 @@ getInputDefaults = function(code) {
 rubricDefaults = getInputDefaults(probPanelCodeOne)
 # (note: could be updated here from a user global file)
 
-# Code for updating Problem rubric widgets in an observer
+# Code for updating Problem tabs' rubric widgets in an observer
 probUpdateCode = character(0)
 properCase = function(x) paste0(toupper(substring(x, 1, 1)), substring(x, 2))
 for (index in 1:length(rubricDefaults)) {
