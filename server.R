@@ -51,6 +51,8 @@ function(input, output, session) {
                          function(p) staticRubrics[[p]][[paste0("initialPoints", p)]]
                        })),
                        "</strong>"))
+  
+  if (length(staticCurrentProblem) == 0) shinyjs::disable("currentProblem")
 
   ########################
   ### Create reactives ###
@@ -86,14 +88,15 @@ function(input, output, session) {
   # Store rubrics and allow observers to know when they change
   rubrics = reactiveVal(staticRubrics)
   
-  # Store parsed files and allow observers to know when it changes
-  allCanvasFiles = reactive({
-    wd = wd()  # control when this runs
-    return(parseFileNames(list.files(), staticCanvasRE)$Canvas)
-  })
+  # Store parsed and other files and allow observers to know when it changes
+  allFiles = reactiveVal(parseFileNames(list.files(), staticCanvasRE))
   
   # Flag indicating that global configuration needs to be updated
   gcDirty = reactiveVal(FALSE)
+  
+  
+  # Vector of active problem numbers (rubric sufficient to allow execution)
+  activeProblems = reactiveVal(which(sapply(staticRubrics, isProblemActive)))
   
   # Store coding files and allow observers to know when it changes
   # codingFiles = reactive({
@@ -111,7 +114,9 @@ function(input, output, session) {
   for (problem in 1:PROBLEM_COUNT) {
     eval(parse(text=paste0("rubric", problem, "Dirty = reactiveVal(FALSE)")))
   }
+
   
+    
   ########################
   ### Create observers ###
   ########################
@@ -182,7 +187,7 @@ function(input, output, session) {
       newWd = dirname(f)
       wd(newWd)
     }
-  }, ignoreInit=TRUE) #CHECK!!
+  }, ignoreInit=TRUE)
   
   observeEvent(wd(), {
     newDir = wd()
@@ -192,19 +197,32 @@ function(input, output, session) {
     }
     shinyjs::html(id="currentFolder", 
                   paste0("<strong>", newDir, "</strong>"))
-
+    
+    # parse files in new directory
+    allFiles(parseFileNames(list.files(), staticCanvasRE))
+    
     # Make or read global configuration
     gc = initializeGlobalConfig(globalLoc)
 
     # Update courseId    
     cid = gc[["courseId"]]
-    browser()
     if (cid != input$courseId)
       updateTextInput(session, "courseId", value=cid)
+    
+    # Update assignment name and instructor email
+    aid = gc[["assignmentName"]]
+    if (aid != input$assignmentName)
+      updateTextInput(session, "assignmentName", value=aid)
+    eid = gc[["instructorEmail"]]
+    if (eid != input$instructorEmail)
+      updateTextInput(session, "instructorEmail", value=eid)
     
     # Update rubrics
     rubNew = getRubrics()
     rubrics(rubNew)
+    browser()
+    if (!any(sapply(rubNew, isProblemActive)))
+      shinyjs::disable("currentProblem")
     
   }, ignoreInit=TRUE)
 
@@ -220,14 +238,37 @@ function(input, output, session) {
     total = total + rubNow[[3]][['initialPoints3']]
     total = paste0('<strong>Total points: ', total, '</strong>')
     shinyjs::html(id='totalPoints', total)
+    
     # It's hard to figure out a way to make the 'submitProblemRubric#' buttons
     # be enabled by a change to any element on the page, and also be disabled
     # after a new set of values is read from a file and the widgets are updated.
     # This half second delay works!
-    for (problem in 1:PROBLEM_COUNT)
-      eval(parse(text=paste0("shinyjs::delay(500, shinyjs::disable('submitProblemRubric", problem,"'))")))
-  })
+    for (problem in 1:PROBLEM_COUNT) {
+      code = paste0("shinyjs::delay(500, shinyjs::disable('submitProblemRubric",
+                    problem,"'))")
+      eval(parse(text=code))
+    }
     
+    # Update activeProblems
+    activeProblems(which(sapply(rubNow, isProblemActive)))
+  })
+
+  # Update input$currentProblem based on activeProblems()
+  observeEvent(activeProblems(), {
+    ap = activeProblems()
+    if (length(ap) > 0) {
+      updateRadioButtons(session, "currentProblem",
+                        choices=paste("Problem", (1:PROBLEM_COUNT)[ap]),
+                        inline=TRUE)
+      shinyjs::enable("currentProblem")
+    } else {
+      updateRadioButtons(session, "currentProblem", choices="Problem 1",
+                         inline=TRUE)
+      # Note: it seems disable does not work for length(choices)==1
+      shinyjs::disable("currentProblem")
+    }
+  }, ignoreInit=TRUE)
+  
   # observeEvent(codingFiles(), {
   #   cf = codingFiles()
   #   req(cf)

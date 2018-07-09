@@ -48,5 +48,12 @@ if (staticRosterFileName == "") {
 }
 
 staticRubrics = getRubrics()
+staticActiveProblems = which(sapply(staticRubrics, isProblemActive))
+if (length(staticActiveProblems) > 0) {
+  staticCurrentProblem = paste("Problem", (1:PROBLEM_COUNT)[staticActiveProblems])
+} else {
+  staticCurrentProblem = "Problem 1"
+}
+
 
 staticCanvasRE = createCanvasRE()

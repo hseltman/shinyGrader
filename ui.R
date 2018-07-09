@@ -44,7 +44,8 @@ fluidPage(
 
         
     tabPanel("Grading",
-      p("Edit specific configuration"),
+      radioButtons("currentProblem", "Problem to grade", choices=staticCurrentProblem,
+                   inline=TRUE),
       p("Grade one"),
       fluidRow(column(5, disabled(selectInput("selectStudent",
                                               "Students (Canvas name; email)",

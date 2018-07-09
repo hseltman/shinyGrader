@@ -11,6 +11,7 @@
 #   getRubrics()
 #   createCanvasRE()
 #   parseFileNames()
+#   isProblemActive()
 
 # Convert a special kind of text file into a named list.
 #
@@ -503,3 +504,18 @@ getRubrics = function() {
   }
   return(rubric)
 }
+
+
+# Test if problem is active
+# 
+# Active is defined as input$runFileName# and input$runFileType#
+# both defined.
+#
+isProblemActive = function(problem) {
+  np = names(problem)
+  names(problem) = substring(np, 1, nchar(np) - 1)
+  return(problem$runFileName != "" && problem$runFileType != "(none)")
+}
+
+
+# File list for a student and a problem
