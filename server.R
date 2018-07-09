@@ -52,6 +52,11 @@ function(input, output, session) {
                        "</strong>"))
   
   if (length(staticCurrentProblem) == 0) shinyjs::disable("currentProblem")
+  
+  if (length(grep("[.]zip$", list.files())) > 0) {
+    shinyjs::enable("unzip")
+  }
+  
 
   ########################
   ### Create reactives ###
@@ -183,6 +188,7 @@ function(input, output, session) {
     }
   })
   
+  
   observeEvent(input$changeFolder, {
     f = try(file.choose(), silent=TRUE)
     if (!is(f, "try-error")) {
@@ -190,6 +196,24 @@ function(input, output, session) {
       wd(newWd)
     }
   }, ignoreInit=TRUE)
+  
+  
+  observeEvent(input$fileRefresh, {
+    allFiles(parseFileNames(list.files(), staticCanvasRE))
+    if (length(grep("[.]zip$", list.files())) > 0) {
+      shinyjs::enable("unzip")
+    } else {
+      shinyjs::disable("zip")
+    }
+  })
+  
+  
+  observeEvent(input$unzip, {
+    f = input$unzip$datapath
+    unzip(f, overwrite=FALSE, junkpaths=TRUE)
+    allFiles(parseFileNames(list.files(), staticCanvasRE))
+  })
+  
   
   observeEvent(wd(), {
     newDir = wd()

@@ -17,11 +17,21 @@ fluidPage(
     tabPanel(title="Assignment",
              HTML("&nbsp;"),
              fluidRow(column(2, actionButton("changeFolder",
-                                  HTML("Change Folder <sup>&Dagger;</sup>"))),
+                                  HTML("Change folder <sup>&Dagger;</sup>"))),
                       column(10, p(id="currentFolder", style="padding:7px;"))),
 
+             
+             fluidRow(column(2, actionButton("fileRefresh", "Manual file refresh")),
+                      column(10, 
+                             p("Use 'Manual file refresh' if you added or removed files manually"))),
+             
+             fluidRow(column(2, p("Unzip a Canvas zip file", style="padding:8px;font-weight:bold")),
+                      column(10, shinyjs::disabled(fileInput("unzip", label=NULL, 
+                                                             accept="application/zip",
+                                                             width="100%")))),
+             
              fluidRow(column(2, actionButton("changeRoster",
-                                             HTML("Change Roster"))),
+                                             HTML("Change roster"))),
                       column(10, p(id="currentRoster", style="padding:7px;"))),
              
              HTML("&nbsp;"),
