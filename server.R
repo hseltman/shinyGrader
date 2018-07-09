@@ -44,7 +44,6 @@ function(input, output, session) {
   }
   shinyjs::html(id="currentFolder", 
                 paste0("<strong>", getwd(), "</strong>"))
-  
   shinyjs::html(id="totalPoints", 
                 paste0("<strong>", "Total points: ",
                        sum(sapply(1:PROBLEM_COUNT, {
@@ -171,11 +170,14 @@ function(input, output, session) {
   observeEvent(students(), {
     st = students()
     if (length(st) == 1 && st == "(none)") {
-      updateSelectInput(session, "selectStudent", choices=st, selected="(none)")
+      updateSelectInput(session, "selectStudent", label="0 Students (Canvas name; email)",
+                        choices=st, selected="(none)")
       shinyjs::disable("selectStudent")
       shinyjs::disable("runOne")
     } else {
-      updateSelectInput(session, "selectStudent", choices=st, selected=st[1])
+      updateSelectInput(session, "selectStudent", 
+                        label=paste(length(st) - 1, "Students (Canvas name; email)"),
+                        choices=st, selected=st[1])
       shinyjs::enable("selectStudent")
       shinyjs::enable("runOne")
     }
@@ -219,7 +221,6 @@ function(input, output, session) {
     
     # Update rubrics
     rubNew = getRubrics()
-    browser()
     rubrics(rubNew)
     if (!any(sapply(rubNew, isProblemActive)))
       shinyjs::disable("currentProblem")
@@ -229,13 +230,11 @@ function(input, output, session) {
   observeEvent(rubrics(), {
     rubNow = rubrics()
     eval(parse(text=probUpdateCode))
-    #eval(parse(text=totalPointsCode))
     #source(textConnection(probUpdateCode), local=TRUE)
-    #source(textConnection(totalPointsCode), local=TRUE)
     total = 0
-    total = total + rubNow[[1]][['initialPoints1']]
-    total = total + rubNow[[2]][['initialPoints2']]
-    total = total + rubNow[[3]][['initialPoints3']]
+    for (problem in 1:PROBLEM_COUNT) {
+      total = total + rubNow[[problem]][['initialPoints']]
+    }
     total = paste0('<strong>Total points: ', total, '</strong>')
     shinyjs::html(id='totalPoints', total)
     
@@ -319,7 +318,7 @@ function(input, output, session) {
   # Construct observer for all inputs in each problem configuration tab
   for (problem in 1:PROBLEM_COUNT) {
     eval(parse(text=c("observeEvent(c(",
-                      paste0("input$", problemInputIds[[problem]], collapse=", "),
+                      paste0("input$", problemInputIds, problem, collapse=", "),
                       "), {",
                       paste0("shinyjs::enable('submitProblemRubric", problem, "')"),
                       "}, ignoreInit=TRUE)")))
@@ -327,13 +326,13 @@ function(input, output, session) {
 
   # Construct observer for each 'submitProblemRubric'
   for (problem in 1:PROBLEM_COUNT) {
-    assigns = paste0("lst[['", problemInputIds[[problem]], "']] = ",
-                     "input$", problemInputIds[[problem]]) #, collapse="\n")
+    assigns = paste0("lst[['", problemInputIds, "']] = ",
+                     "input$", problemInputIds, problem)
     eval(parse(text=c(paste0("observeEvent(input$", 'submitProblemRubric', problem, ", {"),
                       paste0("shinyjs::disable('submitProblemRubric", problem, "')"),
-                      paste0("n = length(problemInputIds[[", problem, "]])"),
+                      paste0("n = length(problemInputIds)"),
                       "lst = vector('list', n)",
-                      paste0("names(lst) = problemInputIds[[", problem, "]]"),
+                      paste0("names(lst) = problemInputIds"),
                       assigns,
                       paste0("rubric", problem, "Dirty(TRUE)"),
                       paste0("saveRubric(", problem, ", lst)"),
@@ -344,9 +343,9 @@ function(input, output, session) {
   eval(parse(text=c("observeEvent(",
                     paste0("c(", paste0("rubric", 1:PROBLEM_COUNT, "Dirty()", collapse=", "),
                            "), {"),
-                    "rnames = names(rubricDefaults)",
+                    "rnames = problemInputIds",
                     "rubNew = vector('list', PROBLEM_COUNT)",
-                    "n = length(rubricDefaults)",
+                    "n = length(problemInputIds)",
                     "for (problem in 1:PROBLEM_COUNT) {",
                     "  rubNew[[problem]] = vector('list', n)",
                     "  names(rubNew[[problem]]) = rnames",

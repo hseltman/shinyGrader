@@ -79,8 +79,6 @@ problemInputIds = substring(problemInputIds, 2, nchar(problemInputIds) - 3)
 temp = match("submitProblemRubric", problemInputIds)
 if (is.na(temp)) stop("no 'submitProblemRubric' in 'genProblemTabs.R'")
 problemInputIds = problemInputIds[-temp]
-problemInputIds = lapply(1:PROBLEM_COUNT,
-                         function(x) paste(problemInputIds, x, sep=""))
 
 
 # Find defaults from a string vector like 'probPanelCodeOne' above.
@@ -169,13 +167,3 @@ for (index in 1:length(rubricDefaults)) {
     probUpdateCode = c(probUpdateCode, code)
   }
 }
-
-# Code for updating total points across problems (from 'initialPoints#')
-totalPointsCode = "total = 0"
-for (problem in 1:PROBLEM_COUNT) {
-  totalPointsCode = c(totalPointsCode,
-                      paste0("total = total + input$initialPoints", problem))
-}
-totalPointsCode = c(totalPointsCode, 
-                    paste0("total = paste0('<strong>Total points: ', total, '</strong>')"))
-totalPointsCode = c(totalPointsCode, paste0("shinyjs::html(id='totalPoints', total)"))

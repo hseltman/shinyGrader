@@ -46,12 +46,11 @@ fluidPage(
     tabPanel("Grading",
       radioButtons("currentProblem", "Problem to grade", choices=staticCurrentProblem,
                    inline=TRUE),
-      p("Grade one"),
       fluidRow(column(5, disabled(selectInput("selectStudent",
-                                              "Students (Canvas name; email)",
+                                              "0 Students (Canvas name; email)",
                                               "(none)", width="100%"))),
-               column(5, verbatimTextOutput("filesForOne")),
-               column(2, disabled(actionButton("runOne", "Run one student")))),
+               column(7, verbatimTextOutput("filesForOne"))),
+      disabled(actionButton("runOne", "Run one student")),
       p("Grade all"),
       p("Grading output")
     ), # end "Grading" tabPanel
