@@ -49,3 +49,4 @@ if (staticRosterFileName == "") {
 
 staticRubrics = getRubrics()
 
+staticCanvasRE = createCanvasRE()

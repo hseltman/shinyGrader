@@ -89,7 +89,7 @@ function(input, output, session) {
   # Store parsed files and allow observers to know when it changes
   allCanvasFiles = reactive({
     wd = wd()  # control when this runs
-    return(parseFilenames(list.files()))
+    return(parseFileNames(list.files(), staticCanvasRE)$Canvas)
   })
   
   # Flag indicating that global configuration needs to be updated
@@ -139,6 +139,7 @@ function(input, output, session) {
       rostDir = dirname(rostName)
       globalConfig(updateGlobalConfig(gc, list(rosterDirectory=rostDir)))
       # Update Assignment tab to show this roster's location
+      
     }
     
     # Let the app know that there is a new roster (or none)
@@ -155,7 +156,7 @@ function(input, output, session) {
       rost = roster$roster
       shinyjs::html(id="currentRoster", 
                     paste0("<strong>", rosterFileName(), " (",
-                           nrow(rost), " students)</strong>"))
+                           nrow(rost) - 1, " students)</strong>"))
       shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
       students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
                       "; ", shortEmail, ")"))
@@ -176,13 +177,12 @@ function(input, output, session) {
   })
   
   observeEvent(input$changeFolder, {
-    #req(input$changeFolder)
     f = try(file.choose(), silent=TRUE)
     if (!is(f, "try-error")) {
       newWd = dirname(f)
       wd(newWd)
     }
-  })
+  }, ignoreInit=TRUE) #CHECK!!
   
   observeEvent(wd(), {
     newDir = wd()
@@ -198,6 +198,7 @@ function(input, output, session) {
 
     # Update courseId    
     cid = gc[["courseId"]]
+    browser()
     if (cid != input$courseId)
       updateTextInput(session, "courseId", value=cid)
     
@@ -235,11 +236,11 @@ function(input, output, session) {
   # })
 
   # ????
-  observeEvent(input$codeFileCheckboxes, {
-    cfSel = input$codeFileCheckboxes
-    updateRadioButtons(session, "codefile",
-                             choices=cfSel, inline=TRUE)
-  }, ignoreInit=TRUE)
+  # observeEvent(input$codeFileCheckboxes, {
+  #   cfSel = input$codeFileCheckboxes
+  #   updateRadioButtons(session, "codefile",
+  #                            choices=cfSel, inline=TRUE)
+  # }, ignoreInit=TRUE)
     
   # Handle change in courseId
   observeEvent(input$courseId, {

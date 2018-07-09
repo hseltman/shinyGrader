@@ -32,6 +32,9 @@ FILE_FORMAT_CODES = list(
   n = "resubmitNumber"  # optional
 )
 #
+# Canvas file format separation character (as a regular expression)
+FILE_FORMAT_PUNCT = "[_]"
+#
 CANVAS_LATE_RE = "late"
 CANVAS_RESUBMIT_RE = "-[0-9]{1,2}"
 #

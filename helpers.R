@@ -9,7 +9,8 @@
 #   getRoster()
 #   saveRubric()
 #   getRubrics()
-
+#   createCanvasRE()
+#   parseFileNames()
 
 # Convert a special kind of text file into a named list.
 #
@@ -342,24 +343,28 @@ getRoster = function(rosterFileName, instructorEmail="") {
 } # end getRoster()
 
 
-# Parse filenames to get various portion of the filename from a
-# list.files() result using Canvas filenaming conventions
-# (as of June 2018).  The meanings of the codes come from
-# FILE_FORMAT_CODES and FILE_FORMAT_RE.
-# It is assumed that the filename code segments are separated
-# by 'punct' (unless in NO_PRIOR_PUNCTUATION).
-# Files not produced by Canvas are ignored.
+# Create the regular expression for parsing Canvas file names.
 #
-# The intention is that the user can name a file "solution_0_0_name.ext".
+# OUTPUT: a regular expression for use by parseFileNames().
 #
-# The output is a dataframe with columns: original, studentName,
-# lateFlag, studentIdNumber, uniqueFileNumber, baseFileName,
-# resubmitNumber, and fileExtension.
-# 
-parseFilenames = function(filenames=list.files(), punct="[_]") {
+# DETAILS:
+# The regular expression is constracted based on codes in
+# FILE_FORMAT_CODES, FILE_FORMAT_RE, and FILE_FORMAT_PUNCT that
+# describe the Canvas file re-naming conventions.  The regular
+# expression is used in parseFilenames() to parse various portions
+# of the filename.
+# It is assumed that the filename code segments are preceeded
+# by 'punct' unless the element is first or its name in
+# NO_PRIOR_PUNCTUATION.
+#
+# Hopefully, if the Canvas conventions change, simple changes
+# can be made in "setup.R" to FILE_FORMAT_CODES, FILE_FORMAT_RE,
+# and/or FILE_FORMAT_PUNCT without any actual reprogramming.
+#
+createCanvasRE = function() {
   ff = CANVAS_FILENAME_FORMAT
   ff = strsplit(ff, "")[[1]]
-
+  
   # Construct regular expression by appending chosen RE sub-patterns
   re = "^"
   first = TRUE
@@ -368,7 +373,7 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
     if (is.null(reSeg)) stop(f, " is an invalid 'filenameFormat' character")
     
     # Handle no prior punctuation
-    p = punct
+    p = FILE_FORMAT_PUNCT
     if (f %in% NO_PRIOR_PUNCTUATION || first) p = ""
     
     # If optional: Convert 'foo' to '(pfoo)*'.
@@ -383,12 +388,39 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
     first = FALSE
   }
   re = paste0(re, "$")
-  
-  # Obtain detailed filename information for specified filename formats
+  return(re)  
+}
+
+
+# Parse a set of filenames using the regular expression
+# created by createCanvasRE().
+#
+# INPUT:
+#   filenames: a character vector of filenames (not full paths)
+#   RE: the regular expression created by createCanvasRE()
+#
+# OUTPUT:
+#   a list with elements
+#     Canvas: a dataframe with columns: original, studentName,
+#             lateFlag, studentIdNumber, uniqueFileNumber,
+#             baseFileName, resubmitNumber, and fileExtension
+#     other: a character vector of the remaining file names
+#
+# DETAILS:
+# Use a regular expression to separate Canvas-created files
+# from other files.
+#
+# The intention is that the user can name a file "solution_0_0_name.ext".
+#
+parseFileNames = function(filenames=list.files(), RE) {
+  ff = CANVAS_FILENAME_FORMAT
+  ff = strsplit(ff, "")[[1]]
   nonZeroLen = function(x) length(x) > 0
-  RER = regexec(re, filenames)
+  RER = regexec(RE, filenames)
   matchFull = regmatches(filenames, RER)
-  matchFull = matchFull[sapply(matchFull, nonZeroLen)]
+  isCanvas = sapply(matchFull, nonZeroLen)
+  other = filenames[!isCanvas]
+  matchFull = matchFull[isCanvas]
   if (length(matchFull) == 0) {
     matchDf = NULL
   } else {
@@ -402,7 +434,7 @@ parseFilenames = function(filenames=list.files(), punct="[_]") {
   matchDf$lateFlat = gsub("_", "", matchDf$resubmitNumber)
   matchDf = cbind(original = I(as.character(filenames)[sapply(RER, function(x) x[1]>0)]),
                   matchDf)
-  return(matchDf)
+  return(list(Canvas=matchDf, other=other))
 } # end parseFilenames()
 
 
