@@ -48,7 +48,7 @@ function(input, output, session) {
   shinyjs::html(id="totalPoints", 
                 paste0("<strong>", "Total points: ",
                        sum(sapply(1:PROBLEM_COUNT, {
-                         function(p) staticRubrics[[p]][[paste0("initialPoints", p)]]
+                         function(p) staticRubrics[[p]][["initialPoints"]]
                        })),
                        "</strong>"))
   
@@ -219,8 +219,8 @@ function(input, output, session) {
     
     # Update rubrics
     rubNew = getRubrics()
-    rubrics(rubNew)
     browser()
+    rubrics(rubNew)
     if (!any(sapply(rubNew, isProblemActive)))
       shinyjs::disable("currentProblem")
     
@@ -349,10 +349,10 @@ function(input, output, session) {
                     "n = length(rubricDefaults)",
                     "for (problem in 1:PROBLEM_COUNT) {",
                     "  rubNew[[problem]] = vector('list', n)",
-                    "  names(rubNew[[problem]]) = paste0(rnames, problem)",
+                    "  names(rubNew[[problem]]) = rnames",
                     "  for (i in 1:n) {",
                     "    widgNum = paste0(rnames[i], problem)",
-                    "    eval(parse(text=paste0('rubNew[[problem]][[i]] = input$', widgNum)))",
+                    "    eval(parse(text=paste0('rubNew[[problem]][[rnames[i]]] = input$', widgNum)))",
                     "  }",
                     "}",
                     "rubrics(rubNew)",
@@ -382,7 +382,7 @@ function(input, output, session) {
     if (is.null(who) || who == "(none)") {
       cat("(none)")
     } else {
-      acf = isolate(allCanvasFiles())
+      acf = isolate(allFiles()$Canvas)
       rost = isolate(roster$roster)
       who = gsub("(.*)([ ][(].*)", "\\1", who)
       id = rost$ID[rost$Name == who]

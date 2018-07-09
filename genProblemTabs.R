@@ -149,8 +149,9 @@ rubricDefaults = getInputDefaults(probPanelCodeOne)
 # Code for updating Problem tabs' rubric widgets in an observer
 probUpdateCode = character(0)
 properCase = function(x) paste0(toupper(substring(x, 1, 1)), substring(x, 2))
+indexedNames = names(rubricDefaults) # (to avoid complex quoting)
 for (index in 1:length(rubricDefaults)) {
-  name = names(rubricDefaults)[index]
+  name = indexedNames[index]
   type = properCase(attr(rubricDefaults[[index]], "type"))
   for (problem in 1:PROBLEM_COUNT) {
     nameNum = paste0(name, problem)
@@ -158,12 +159,12 @@ for (index in 1:length(rubricDefaults)) {
       code = paste0("update", type, "Input(",
                     "session=session, ",
                     "inputId='", nameNum, "', ",
-                    "select=rubNow[[", problem, "]][['", nameNum, "']])")
+                    "select=rubNow[[", problem, "]]$", indexedNames[index], ")")
     } else {
       code = paste0("update", type, "Input(",
                       "session=session, ",
                       "inputId='", nameNum, "', ",
-                      "value=rubNow[[", problem, "]][['", nameNum, "']])")
+                      "value=rubNow[[", problem, "]]$", indexedNames[index], ")")
     }
     probUpdateCode = c(probUpdateCode, code)
   }

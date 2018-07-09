@@ -495,7 +495,7 @@ getRubrics = function() {
                silent=TRUE)
     if (is(rslt, "try-error")) {
       rubric[[problem]] = rubricDefaults
-      names(rubric[[problem]]) = paste0(names(rubric[[problem]]), problem)
+      names(rubric[[problem]]) = names(rubric[[problem]])
     } else {
       if (length(rslt) != 1 || rslt != "rubricList")
         stop(paste0("rubric", problem, ".RData"), " was manually altered!")
@@ -513,7 +513,7 @@ getRubrics = function() {
 #
 isProblemActive = function(problem) {
   np = names(problem)
-  names(problem) = substring(np, 1, nchar(np) - 1)
+  #names(problem) = substring(np, 1, nchar(np) - 1)
   return(problem$runFileName != "" && problem$runFileType != "(none)")
 }
 
