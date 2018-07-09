@@ -432,7 +432,9 @@ parseFileNames = function(filenames=list.files(), RE) {
   
   # Cleanup data
   matchDf$resubmitNumber = gsub("-", "", matchDf$resubmitNumber)
-  matchDf$lateFlat = gsub("_", "", matchDf$resubmitNumber)
+  matchDf$resubmitNumber[matchDf$resubmitNumber == ""] = "0"
+  matchDf$resubmitNumber = as.numeric(matchDf$resubmitNumber)
+  matchDf$lateFlag = gsub("_", "", matchDf$resubmitNumber)
   matchDf = cbind(original = I(as.character(filenames)[sapply(RER, function(x) x[1]>0)]),
                   matchDf)
   return(list(Canvas=matchDf, other=other))
@@ -518,4 +520,43 @@ isProblemActive = function(problem) {
 }
 
 
+# Convert input$selectStudent to an ID number
+selectStudentToId = function(ss, roster) {
+  if (ss == "(none)") return(NULL)
+  if (substring(ss, 1, 11) == "Instructor;") return(0)
+  email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
+  emails = gsub("@.*", "", roster$Email)
+  index = which(email == emails)
+  if (length(index) != 1) stop("Roster error")
+  return(roster[index, "ID"])
+}
+
 # File list for a student and a problem
+findCurrentFiles = function(idNum, allFiles, rubric) {
+  browser()
+  stFiles = allFiles$Canvas[allFiles$Canvas$studentIdNumber==idNum,]
+  otherFiles = allFiles$other
+  runFileName = rubric$runFileName
+  runFileType = rubric$runFileType
+  filesToCopy = c(rubric$filesToCopy, rubric$filesToCopyAndDelete)
+  filesToDelete = rubric$filesToCopyAndDelete
+  
+  # Get the one run file
+  if (runFileType == ".RRmd") runFileType = c(".R", ".Rmd")
+  mtch = stFiles$baseFileName==runFileName & stFiles$fileExtension %in% runFileType
+  if (!any(mtch)) {
+    # Note: If an instructor file is the run file, extension ".RRmd" is interpreted as ".R"
+    runFileIn = runFileOut = paste0(runFileName, runFileType[1])
+    if (!any(otherFiles == runFile)) runFileIn = runFileOut = NA
+  } else {
+    index = which.max(stFiles[mtch, "resubmitNumber"])
+    runFileIn = stFiles[mtch, "original"][index]
+    runFileOut = paste0(stFiles[mtch, c("baseFileName", "fileExtension")], collapse="")
+  }
+  
+  # Get the other files to be copied
+  filesToCopy = unlist(strsplit(filesToCopy, ";"))
+  print(runFileIn)
+  print(runFileOut)
+
+}

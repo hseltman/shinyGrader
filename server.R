@@ -101,7 +101,10 @@ function(input, output, session) {
   
   # Vector of active problem numbers (rubric sufficient to allow execution)
   activeProblems = reactiveVal(which(sapply(staticRubrics, isProblemActive)))
-  
+
+  # Files for current problem
+  currentFiles = reactiveVal(staticCurrentFiles)
+    
   # Store coding files and allow observers to know when it changes
   # codingFiles = reactive({
   #   pf = parsedFiles()
@@ -292,6 +295,22 @@ function(input, output, session) {
     }
   }, ignoreInit=TRUE)
   
+  
+  observeEvent(c(roster$serialNum, input$selectStudent, input$currentProblem,
+                 rubrics(), allFiles()), {
+    browser()
+    rubNow = rubrics()
+    id = selectStudentToId(input$selectStudent, roster$roster)
+    if (is.null(id) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+      currentFiles("")
+    } else {
+      prob = as.numeric(substring(input$currentProblem, 9))
+      currentFiles(findCurrentFiles(id, allFiles(), rubNow[[prob]]))
+    }
+  }, ignoreInit=TRUE)
+    
+    
+
   # observeEvent(codingFiles(), {
   #   cf = codingFiles()
   #   req(cf)

@@ -57,3 +57,8 @@ if (length(staticActiveProblems) > 0) {
 
 
 staticCanvasRE = createCanvasRE()
+
+
+staticCurrentFiles = findCurrentFiles(id=0, 
+                                      allFiles=parseFileNames(list.files(), staticCanvasRE),
+                                      rubric=staticRubrics[[1]])
