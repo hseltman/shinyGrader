@@ -2,6 +2,7 @@
 # H. Seltman, June 2018
 
 # Functions in this file:
+#   getCurrentProblem()
 #   textToConfigList()
 #   writeConfig()
 #   updateStatus()
@@ -14,9 +15,10 @@
 #   isProblemActive()
 #   list.files.only()
 #   findCurrentFiles()
-#   selectStudentsToId()
+#   selectStudentInfo()
 #   matchFile()
 #   dualAlert()
+#   setupSandbox()
 
 # Convert a special kind of text file into a named list.
 #
@@ -530,15 +532,17 @@ isProblemActive = function(problem) {
 }
 
 
-# Convert input$selectStudent to an ID number
-selectStudentToId = function(ss, roster) {
+# Convert input$selectStudent to an ID number and email
+selectStudentInfo = function(ss, roster) {
   if (ss == "(none)") return(NULL)
   if (substring(ss, 1, 11) == "Instructor;") return(0)
   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
   emails = gsub("@.*", "", roster$Email)
   index = which(email == emails)
   if (length(index) != 1) stop("Roster error")
-  return(roster[index, "ID"])
+  rtn = c(roster[index, "ID"], email)
+  names(rtn) = c("id", "email")
+  return(rtn)
 }
 
 
@@ -823,3 +827,89 @@ dualAlert = function(title, msg) {
   }
   invisible(NULL)
 }
+
+
+# get current problem from "Problem #" text of "input$currentProblem"
+getCurrentProblem = function(probString) {
+  return(as.numeric(substring(probString, 9)))
+}
+
+
+# Setup sandbox or just return prior sandbox path if no files are new
+#
+# INPUT:
+#  studentEmail: students full email address
+#  currentFiles: result of calling getCurrentFiles()
+#
+# OUTPUT: path to sandbox (or NULL if unsuccessful)
+#
+# SIDE EFFECTS: create sandbox and copy files to it, if appropriate
+#
+# DETAILS:
+# A sandbox directory is created for each student using the LHS of their email.
+# Within this directory, each attempt is given a directory named "1", "2", etc.
+#
+# A new attempt is defined by at least one new student file in currentFiles.  This
+# works because newly submitted files on Canvas are given new names ("-1", "-2", etc.).
+#
+# For new directories, all files are copied to the sandbox.  For existing directories,
+# all sandbox files that are older than the ones in the working directory are replaced.
+# This means that you can re-run analyses after amending non-student files.  In addition,
+# you may manually correct student files (e.g., for a trivial error) in the working
+# directory, and then any re-run will use the corrected file.
+#
+# The save() version of the 'currentFiles' object is used to identify what files
+# define an attempt.  Do not erase "shinyGraderCF.RData" files!
+#
+setupSandbox = function(studentEmail, currentFiles) {
+  studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
+  browser()
+  
+  # Set up top student directory and 'lastDir'
+  if (! dir.exists(studentEmail)) {
+    if (!dir.create(studentEmail, showWarnings=FALSE)) return(FALSE)
+    if (!dir.create(file.path(studentEmail, "1"), showWarnings=FALSE)) return(FALSE)
+    lastDir = 0  # most recently used attempt
+  } else {
+    dirs = basename(list.dirs(studentEmail, recursive=FALSE))
+    dirs = grep("^[1-9][0-9]?$", dirs, value=TRUE)
+    if (length(dirs) == 0) {
+      if (!dir.create(file.path(studentEmail, "1"), showWarnings=FALSE)) return(FALSE)
+      lastDir = 0      
+    } else {
+      lastDir = max(as.numeric(dirs))
+    }
+  } # end setting up top student directory and setting 'lastDir'
+  
+  # Determine if a new directory is needed
+  useLastDir = FALSE
+  cfPath = file.path(studentEmail, lastDir, "shinyGraderCF.RData")
+  if (lastDir != 0 && !file.exists(cfPath)) {
+    useLastDir = TRUE
+    save(currentFiles, file=file.path(studentEmail, lastDir, "shinyGraderCF.RData"))
+  }
+  if (lastDir != 0 && file.exists(cfPath)) {
+    thisCF = currentFiles
+    what = try(suppressWarnings(load(cfPath)), silent=TRUE)
+    if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
+      if (isTRUE(all.equal(thisCF$runFile, currentFiles$runFile)) &&
+          isTRUE(all.equal(thisCF$reqFiles, currentFiles$reqFiles)) &&
+          isTRUE(all.equal(thisCF$optFiles, currentFiles$optFiles))) {
+        useLastDir = FALSE
+      } else {
+        currentFiles = thisCF
+      }
+    }
+  }
+  
+  if (!useLastDir) {
+    thisDir = lastDir + 1
+    if (!dir.create(file.path(studentEmail, lastDir + 1), showWarnings=FALSE)) return(FALSE)
+    save(currentFiles, file=file.path(studentEmail, thisDir, "shinyGraderCF.RData"))
+  } else {
+    thisDir = lastDir
+  }
+  path = file.path(studentEmail, thisDir)
+  
+  print(path)
+} # end setupSandbox()
