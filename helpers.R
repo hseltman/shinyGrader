@@ -12,6 +12,11 @@
 #   createCanvasRE()
 #   parseFileNames()
 #   isProblemActive()
+#   list.files.only()
+#   findCurrentFiles()
+#   selectStudentsToId()
+#   matchFile()
+#   dualAlert()
 
 # Convert a special kind of text file into a named list.
 #
@@ -393,18 +398,25 @@ createCanvasRE = function() {
 }
 
 
+# A version of list.files() that excludes directories
+list.files.only = function(path=".") {
+  lf = list.files(path)
+  return(lf[file.info(file.path(path, lf))$isdir == FALSE])
+}
+
+
 # Parse a set of filenames using the regular expression
 # created by createCanvasRE().
 #
 # INPUT:
-#   filenames: a character vector of filenames (not full paths)
+#   filenames: a character vector of filenames (not full paths; NO directories)
 #   RE: the regular expression created by createCanvasRE()
 #
 # OUTPUT:
 #   a list with elements
-#     Canvas: a dataframe with columns: original, studentName,
-#             lateFlag, studentIdNumber, uniqueFileNumber,
-#             baseFileName, resubmitNumber, and fileExtension
+#     Canvas: a dataframe with columns: submitName, canvasName,
+#             studentName, lateFlag, studentIdNumber, uniqueFileNumber,
+#             baseFileName, resubmitNumber, fileExtension
 #     other: a character vector of the remaining file names
 #
 # DETAILS:
@@ -413,7 +425,7 @@ createCanvasRE = function() {
 #
 # The intention is that the user can name a file "solution_0_0_name.ext".
 #
-parseFileNames = function(filenames=list.files(), RE) {
+parseFileNames = function(filenames, RE) {
   ff = CANVAS_FILENAME_FORMAT
   ff = strsplit(ff, "")[[1]]
   nonZeroLen = function(x) length(x) > 0
@@ -425,8 +437,8 @@ parseFileNames = function(filenames=list.files(), RE) {
   if (length(matchFull) == 0) {
     matchDf = NULL
   } else {
-    matchDf = data.frame(do.call(rbind, matchFull)[, -1, drop=FALSE], stringsAsFactors=FALSE)
-    names(matchDf) = sapply(ff, function(c) FILE_FORMAT_CODES[[c]])
+    matchDf = data.frame(do.call(rbind, matchFull)[, , drop=FALSE], stringsAsFactors=FALSE)
+    names(matchDf) = c("canvasName", sapply(ff, function(c) FILE_FORMAT_CODES[[c]]))
   }
   if (is.null(matchDf)) return(NULL)
   
@@ -435,8 +447,8 @@ parseFileNames = function(filenames=list.files(), RE) {
   matchDf$resubmitNumber[matchDf$resubmitNumber == ""] = "0"
   matchDf$resubmitNumber = as.numeric(matchDf$resubmitNumber)
   matchDf$lateFlag = gsub("_", "", matchDf$resubmitNumber)
-  matchDf = cbind(original = I(as.character(filenames)[sapply(RER, function(x) x[1]>0)]),
-                  matchDf)
+  submitName = paste0(matchDf$baseFileName, matchDf$fileExtension)
+  matchDf = cbind(submitName, matchDf)
   return(list(Canvas=matchDf, other=other))
 } # end parseFilenames()
 
@@ -510,13 +522,11 @@ getRubrics = function() {
 
 # Test if problem is active
 # 
-# Active is defined as input$runFileName# and input$runFileType#
-# both defined.
+# Active is currently defined as input$runFile not blank.
 #
 isProblemActive = function(problem) {
   np = names(problem)
-  #names(problem) = substring(np, 1, nchar(np) - 1)
-  return(problem$runFileName != "" && problem$runFileType != "(none)")
+  return(problem$runFile != "")
 }
 
 
@@ -531,32 +541,285 @@ selectStudentToId = function(ss, roster) {
   return(roster[index, "ID"])
 }
 
-# File list for a student and a problem
-findCurrentFiles = function(idNum, allFiles, rubric) {
-  browser()
-  stFiles = allFiles$Canvas[allFiles$Canvas$studentIdNumber==idNum,]
-  otherFiles = allFiles$other
-  runFileName = rubric$runFileName
-  runFileType = rubric$runFileType
-  filesToCopy = c(rubric$filesToCopy, rubric$filesToCopyAndDelete)
-  filesToDelete = rubric$filesToCopyAndDelete
-  
-  # Get the one run file
-  if (runFileType == ".RRmd") runFileType = c(".R", ".Rmd")
-  mtch = stFiles$baseFileName==runFileName & stFiles$fileExtension %in% runFileType
-  if (!any(mtch)) {
-    # Note: If an instructor file is the run file, extension ".RRmd" is interpreted as ".R"
-    runFileIn = runFileOut = paste0(runFileName, runFileType[1])
-    if (!any(otherFiles == runFile)) runFileIn = runFileOut = NA
-  } else {
-    index = which.max(stFiles[mtch, "resubmitNumber"])
-    runFileIn = stFiles[mtch, "original"][index]
-    runFileOut = paste0(stFiles[mtch, c("baseFileName", "fileExtension")], collapse="")
+
+# Given a file specification with the rules shown here and a
+# copy of 'allFiles', return a data.frame with any matching files.
+#
+# The columns are:
+#   inName: name of the original file in the working directory
+#   outName: name in should have in the sandbox
+#   deleteFlag: should be deleted after use
+#   caseFlag: case was wrong
+#   looseFlag: file name convention not strictly followed
+#
+# The rules are:
+#   An initial "@" indicates a non-Canvas file.
+#   An initial "^" indicates case-insensitive.
+#   Adding "{{reg. exp.}}" indicates secondary matching (with renaming).
+#   Just a "{{reg. exp.}}" indicates matching (without renaming).
+#   A final "-" indicates that the file should be deleted from
+#     the sandbox after use.
+#
+# If secondary matching finds multiple files, NULL is returned.
+#
+#
+# INPUT:
+#  fs: a files specification that follows the rules
+#  studentFiles: a data.frame of parsed student files for a 
+#                single student as defined in parseFileNames().
+#  otherFiles: a character vector of non-student files
+#
+matchFile = function(fs, studentFiles, otherFiles) {
+  fs = trimws(fs)
+  if (fs == "") return(NULL)
+  if (substring(fs, 1, 2) %in% c("@^", "^@")) {
+    dualAlert("Bad rubric", 
+              'File specification cannot use both "@" and "^"')
+    return(NULL)
   }
   
-  # Get the other files to be copied
-  filesToCopy = unlist(strsplit(filesToCopy, ";"))
-  print(runFileIn)
-  print(runFileOut)
+  # Handle initial character
+  first = substring(fs, 1, 1)
+  if (first == "@") {
+    Canvas = FALSE
+    ignoreCase = FALSE
+    fs = trimws(substring(fs, 2))
+  } else if (first == "^") {
+    Canvas = TRUE
+    ignoreCase = TRUE
+    fs = trimws(substring(fs, 2))
+  } else {
+    Canvas = TRUE
+    ignoreCase = FALSE
+  }
+  
+  # handle terminal character
+  if (substring(fs, nchar(fs)) == "-") {
+    delete = TRUE
+    fs = trimws(substring(fs, 1, nchar(fs) -1))
+  } else {
+    delete = FALSE
+  }
+  
+  # Break 'fs' info 'fs' and 'fsRE'
+  if (substring(fs, nchar(fs) - 1) == "}}") {
+    left = regexpr("[{]{2}", fs)
+    if (left == -1) {
+      dualAlert("Bad rubric", 'File specification has }} without {{')
+      return(NULL)
+    }
+    fsRE = substring(fs, left + 2, nchar(fs) - 2)
+    fs = substring(fs, 1, left - 1)
+  } else {
+    fsRE = ""
+  }
+  
+  # Non-Canvas search must use no RE or RE, not both
+  if (Canvas==FALSE && fs!="" && fsRE!="") {
+    dualAlert("Bad rubric", 'Non-Canvas file specification has both RE and non-RE')
+    return(NULL)
+  }
+  
+  ############################################################
+  ### Handle finding the file in "other" (non-Canvas file) ###
+  ############################################################
+  if (!Canvas) {
+    if (fs != "") { # Try direct match
+      indices = grep(fs, otherFiles) # length is always 0 or 1
+      if (length(indices) > 0) {
+        # non-Canvas exact match
+        return(data.frame(inName=fs,
+                          outName=fs,
+                          deleteFlag=delete,
+                          caseFlag=FALSE,
+                          looseFlag=FALSE))
+      }
+      
+    } else { # Try RE
+      indices = grep(fsRE, otherFiles)
+      if (length(indices) == 1) {
+        # Non-Canvas RE "loosening" finds one match
+        return(data.frame(inName=otherFiles[indices],
+                          outName=fs,
+                          deleteFlag=delete,
+                          caseFlag=FALSE,
+                          looseFlag=FALSE))
+      }
+      
+      if (length(indices) > 0) {
+        # Non-Canvas (sole) RE finds match(es)
+        return(data.frame(inName=otherFiles[indices],
+                          outName=otherFiles[indices],
+                          deleteFlag=delete,
+                          caseFlag=FALSE,
+                          looseFlag=FALSE))
+      }
+    } # end try RE for non-Canvas
+    # Non-Canvas non-match
+    return(NULL)
+  }
+  
+  ###########################################
+  ### Handle finding the file in 'Canvas' ###
+  ###########################################
+  if (nrow(studentFiles) == 0) return(NULL)
+  # First try exact target match
+  if (fs != "") {
+    # Note: may have multiple submissions (-1, etc.)
+    indices = grep(fs, studentFiles$submitName, fixed=TRUE)
+    matched = studentFiles[indices, ]
+    justOne = sum(!duplicated(matched[indices, "submitName"])) == 1
+    if (length(indices) > 0 && justOne) {
+      # Canvas exact matches
+      latest = which.max(matched$resubmitNumber)
+      return(data.frame(inName=matched[latest, "canvasName"],
+                        outName=fs,
+                        deleteFlag=delete,
+                        caseFlag=FALSE,
+                        looseFlag=TRUE))
+    }
+    
+    # Try a case-insensitive match
+    indices = grep(toupper(fs), toupper(studentFiles$submitName), fixed=TRUE)
+    matched = studentFiles[indices, ]
+    justOne = sum(!duplicated(matched[indices, "submitName"])) == 1
+    if (length(indices) > 0 && justOne) {
+      # Canvas "loosening" using RE
+      latest = which.max(matched$resubmitNumber)
+      return(data.frame(inName=matched[latest, "canvasName"],
+                        outName=fs,
+                        deleteFlag=delete,
+                        caseFlag=TRUE,
+                        looseFlag=TRUE))
+    }
+  } # end if an exact target was supplied
+  
+  # Try RE after failure for an exact target ("loosening")
+  if (fsRE != "") {
+    indices = grep(fsRE, studentFiles$submitName)
+    uMatches = unique(studentFiles[indices, "submitName"])
+    
+    # Handle Canvas with "loosening" (where an exact match fails)
+    if (fs!="") {
+      if (length(uMatches) > 1) {
+        # Non-Canvas RE "loosening" finds multiple matches
+        return(NULL)
+      } else if (length(uMatches) == 1) {
+        # Non-Canvas RE "loosening" finds one match
+        matched = studentFiles[indices, ]
+        latest = which.max(matched$resubmitNumber)
+        return(data.frame(inName=matched[latest, "canvasName"],
+                          outName=matched[latest, "submitName"],
+                          deleteFlag=delete,
+                          caseFlag=FALSE,
+                          looseFlag=TRUE))
+      }
+      # Try "loosening" with ignore.case=TRUE
+      indices = grep(fsRE, studentFiles$submitName, ignore.case=TRUE)
+      uMatches = unique(studentFiles[indices, "submitName"])
+      if (length(uMatches) > 0) {
+        rtn = NULL
+        for (m in length(uMatches)) {
+          matched = studentFiles[studentFiles$baseFileName == m, ]
+          latest = which.max(matched$resubmitNumber)
+          rtn = rbind(rtn, data.frame(inName=matched[latest, "canvasName"],
+                                      outName=fs,
+                                      deleteFlag=delete,
+                                      caseFlag=FALSE,
+                                      looseFlag=TRUE))
+        }
+      }
+      # Exact target supplied, not found, and loosened version not found
+      return(NULL)
+    }
+    
+    # Handle Canvas + RE when no exact file name is given (wildcard case)
+    # Note: can only get here if (fs == "")
+    if (length(uMatches) > 0) {
+      # Canvas files have wildcard match(es)
+      rtn = NULL
+      for (m in length(uMatches)) {
+        matched = studentFiles[studentFiles$baseFileName == m, ]
+        latest = which.max(matched$resubmitNumber)
+        rtn = rbind(rtn, data.frame(inName=matched[latest, "canvasName"],
+                                    outName=matched[latest, "submitName"],
+                                    deleteFlag=delete,
+                                    caseFlag=FALSE,
+                                    looseFlag=FALSE))
+      }
+    }
+    
+    # No wildcard matches; try wildcard with ignore case
+    indices = grep(fsRE, studentFiles$submitName, ignore.case=TRUE)
+    uMatches = unique(studentFiles[indices, "submitName"])
+    if (length(uMatches) > 0) {
+      # Canvas files have wildcard match(es)
+      rtn = NULL
+      for (m in length(uMatches)) {
+        matched = studentFiles[studentFiles$baseFileName == m, ]
+        latest = which.max(matched$resubmitNumber)
+        rtn = rbind(rtn, data.frame(inName=matched[latest, "canvasName"],
+                                    outName=matched[latest, "submitName"],
+                                    deleteFlag=delete,
+                                    caseFlag=TRUE,
+                                    looseFlag=FALSE))
+      }
+    }
+    # No wildcards found
+    return(NULL)
+  } # end if (fsRE != ""): RE given for Canvas files
+  
+  # No direct match and no RE
+  return(NULL)
+  
+} # end matchFile()
 
+
+
+# File list for a student and a problem
+findCurrentFiles = function(idNum, allFiles, rubric) {
+  if (rubric$runFile == "") return(NULL)
+  studentFiles = allFiles$Canvas[allFiles$Canvas$studentIdNumber==idNum,]
+  otherFiles = allFiles$other
+  runFile = rubric$runFile
+  reqFiles = trimws(strsplit(rubric$reqFiles, ";")[[1]])
+  optFiles = trimws(strsplit(rubric$optFiles, ";")[[1]])
+  
+  # Get the one run file (may take two attempts if .RRmd is specified)
+  if (length(grep("[.]RRmd", runFile)) > 0) {
+    runFile = c(gsub("[.]RRmd", ".R", runFile), gsub("[.]RRmd", ".Rmd", runFile))
+  }
+  runDf = matchFile(runFile[1], studentFiles, otherFiles)
+  if (is.null(runDf) && length(runFile) > 2) {
+    runDf = matchFile(runFile[2], studentFiles, otherFiles)
+  }
+  
+  # Get required and optional files
+  reqDf = lapply(reqFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
+  missReq = sapply(reqDf, is.null)
+  reqMissing = reqFiles[missReq]
+  reqDf = do.call(rbind, reqDf[!missReq])
+  optDf = lapply(optFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
+  optDf = do.call(rbind, optDf)
+  return(list(runDf=runDf,
+              reqMissing=reqMissing,
+              reqDf=reqDf,
+              optDf=optDf))
+}
+
+
+# Give a warning message in the console or as a shinyjs::alert
+# based on whether or not Shiny is running.
+#
+dualAlert = function(title, msg) {
+  # Determine if the Shiny is running yet, to decide if shinyalert() will work
+  inSession = exists("session", env=parent.env(parent.frame())) &&
+    is(get("session", env=parent.env(parent.frame())), "ShinySession")
+  
+  if (inSession) {
+    shinyalert(title, msg, type = "warning")
+  } else {
+    warning(title, ": ", msg)
+  }
+  invisible(NULL)
 }

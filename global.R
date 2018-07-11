@@ -60,5 +60,6 @@ staticCanvasRE = createCanvasRE()
 
 
 staticCurrentFiles = findCurrentFiles(id=0, 
-                                      allFiles=parseFileNames(list.files(), staticCanvasRE),
+                                      allFiles=parseFileNames(list.files.only(), 
+                                                              staticCanvasRE),
                                       rubric=staticRubrics[[1]])

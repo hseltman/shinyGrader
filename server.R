@@ -93,7 +93,7 @@ function(input, output, session) {
   rubrics = reactiveVal(staticRubrics)
   
   # Store parsed and other files and allow observers to know when it changes
-  allFiles = reactiveVal(parseFileNames(list.files(), staticCanvasRE))
+  allFiles = reactiveVal(parseFileNames(list.files.only(), staticCanvasRE))
   
   # Flag indicating that global configuration needs to be updated
   gcDirty = reactiveVal(FALSE)
@@ -202,7 +202,7 @@ function(input, output, session) {
   
   
   observeEvent(input$fileRefresh, {
-    allFiles(parseFileNames(list.files(), staticCanvasRE))
+    allFiles(parseFileNames(list.files.only(), staticCanvasRE))
     if (length(grep("[.]zip$", list.files())) > 0) {
       shinyjs::enable("unzip")
     } else {
@@ -214,7 +214,7 @@ function(input, output, session) {
   observeEvent(input$unzip, {
     f = input$unzip$datapath
     unzip(f, overwrite=FALSE, junkpaths=TRUE)
-    allFiles(parseFileNames(list.files(), staticCanvasRE))
+    allFiles(parseFileNames(list.files.only(), staticCanvasRE))
   })
   
   
@@ -228,7 +228,7 @@ function(input, output, session) {
                   paste0("<strong>", newDir, "</strong>"))
     
     # parse files in new directory
-    allFiles(parseFileNames(list.files(), staticCanvasRE))
+    allFiles(parseFileNames(list.files.only(), staticCanvasRE))
     
     # Make or read global configuration
     gc = initializeGlobalConfig(globalLoc)
@@ -298,11 +298,10 @@ function(input, output, session) {
   
   observeEvent(c(roster$serialNum, input$selectStudent, input$currentProblem,
                  rubrics(), allFiles()), {
-    browser()
     rubNow = rubrics()
     id = selectStudentToId(input$selectStudent, roster$roster)
     if (is.null(id) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
-      currentFiles("")
+      currentFiles(NULL)
     } else {
       prob = as.numeric(substring(input$currentProblem, 9))
       currentFiles(findCurrentFiles(id, allFiles(), rubNow[[prob]]))
