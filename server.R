@@ -419,27 +419,45 @@ function(input, output, session) {
   
 
   output$filesForOne = renderPrint({
-    who = input$selectStudent
-    if (is.null(who) || who == "(none)") {
-      cat("(none)")
+    req(currentFiles())
+    cf = currentFiles()
+    
+    runDf = cf$runDf
+    if (is.null(runDf)) {
+      cat("No run file found.\n")
+    } else if (nrow(runDf) == 2) {
+      cat("Error: Multiple run files found: ", paste(runDf$inName, sep=", "), "\n")
     } else {
-      acf = isolate(allFiles()$Canvas)
-      rost = isolate(roster$roster)
-      who = gsub("(.*)([ ][(].*)", "\\1", who)
-      id = rost$ID[rost$Name == who]
-      if (length(id) != 1) {
-        shinyjs::shinyalert("No match in roster,",
-                            paste0(who, "is not in the roster"))
-        cat("(none)")
-      } else {
-        files = acf$original[acf$studentIdNumber == id]
-        if (length(files) == 0) {
-          cat("This student has no files.")
-        } else {
-          cat("Files:\n")
-          cat(files, sep="\n")
-        }
+      cat("Run file: ", runDf$inName,
+          ifelse(runDf$caseFlag, "(case error)\n",
+                 ifelse(runDf$looseFlag, "(naming error)\n", "\n")))
+    }
+    
+    reqDf = cf$reqDf
+    reqFiles = reqDf$inName
+    if (length(reqFiles) > 0) {
+      cat("\nRequired files:\n")
+      for (ii in seq(along=reqFiles)) {
+        cat(reqFiles[ii],
+            ifelse(reqDf$caseFlag[ii], "(case error)\n",
+                   ifelse(reqDf$looseFlag[ii], "(naming error)\n", "\n")))
       }
+    }
+    
+    optDf = cf$optDf
+    optFiles = optDf$inName
+    if (length(optFiles) > 0) {
+      cat("\nOptional files:\n")
+      for (ii in seq(along=optFiles)) {
+        cat(optFiles[ii],
+            ifelse(optDf$caseFlag[ii], "(case error)\n",
+                   ifelse(optDf$looseFlag[ii], "(naming error)\n", "\n")))
+      }
+    }
+    
+    if (length(cf$reqMissing) > 0) {
+      cat("\nMissing requirements:\n")
+      cat(cf$reqMissing, sep="\n")
     }
   })
   
