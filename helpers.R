@@ -628,8 +628,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
       indices = grep(fs, otherFiles) # length is always 0 or 1
       if (length(indices) > 0) {
         # non-Canvas exact match
-        return(data.frame(inName=fs,
-                          outName=fs,
+        return(data.frame(inName=I(fs),
+                          outName=I(fs),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=FALSE))
@@ -639,8 +639,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
       indices = grep(fsRE, otherFiles)
       if (length(indices) == 1) {
         # Non-Canvas RE "loosening" finds one match
-        return(data.frame(inName=otherFiles[indices],
-                          outName=fs,
+        return(data.frame(inName=I(otherFiles[indices]),
+                          outName=I(fs),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=FALSE))
@@ -648,8 +648,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
       
       if (length(indices) > 0) {
         # Non-Canvas (sole) RE finds match(es)
-        return(data.frame(inName=otherFiles[indices],
-                          outName=otherFiles[indices],
+        return(data.frame(inName=I(otherFiles[indices]),
+                          outName=I(otherFiles[indices]),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=FALSE))
@@ -672,11 +672,11 @@ matchFile = function(fs, studentFiles, otherFiles) {
     if (length(indices) > 0 && justOne) {
       # Canvas exact matches
       latest = which.max(matched$resubmitNumber)
-      return(data.frame(inName=matched[latest, "canvasName"],
-                        outName=fs,
+      return(data.frame(inName=I(matched[latest, "canvasName"]),
+                        outName=I(fs),
                         deleteFlag=delete,
                         caseFlag=FALSE,
-                        looseFlag=TRUE))
+                        looseFlag=FALSE))
     }
     
     # Try a case-insensitive match
@@ -686,11 +686,11 @@ matchFile = function(fs, studentFiles, otherFiles) {
     if (length(indices) > 0 && justOne) {
       # Canvas "loosening" using RE
       latest = which.max(matched$resubmitNumber)
-      return(data.frame(inName=matched[latest, "canvasName"],
-                        outName=fs,
+      return(data.frame(inName=I(matched[latest, "canvasName"]),
+                        outName=I(fs),
                         deleteFlag=delete,
                         caseFlag=TRUE,
-                        looseFlag=TRUE))
+                        looseFlag=FALSE))
     }
   } # end if an exact target was supplied
   
@@ -708,8 +708,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
         # Non-Canvas RE "loosening" finds one match
         matched = studentFiles[indices, ]
         latest = which.max(matched$resubmitNumber)
-        return(data.frame(inName=matched[latest, "canvasName"],
-                          outName=matched[latest, "submitName"],
+        return(data.frame(inName=I(matched[latest, "canvasName"]),
+                          outName=I(matched[latest, "submitName"]),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=TRUE))
@@ -722,8 +722,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
         for (m in length(uMatches)) {
           matched = studentFiles[studentFiles$baseFileName == m, ]
           latest = which.max(matched$resubmitNumber)
-          rtn = rbind(rtn, data.frame(inName=matched[latest, "canvasName"],
-                                      outName=fs,
+          rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
+                                      outName=I(fs),
                                       deleteFlag=delete,
                                       caseFlag=FALSE,
                                       looseFlag=TRUE))
@@ -741,8 +741,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
       for (m in length(uMatches)) {
         matched = studentFiles[studentFiles$baseFileName == m, ]
         latest = which.max(matched$resubmitNumber)
-        rtn = rbind(rtn, data.frame(inName=matched[latest, "canvasName"],
-                                    outName=matched[latest, "submitName"],
+        rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
+                                    outName=I(matched[latest, "submitName"]),
                                     deleteFlag=delete,
                                     caseFlag=FALSE,
                                     looseFlag=FALSE))
@@ -758,8 +758,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
       for (m in length(uMatches)) {
         matched = studentFiles[studentFiles$baseFileName == m, ]
         latest = which.max(matched$resubmitNumber)
-        rtn = rbind(rtn, data.frame(inName=matched[latest, "canvasName"],
-                                    outName=matched[latest, "submitName"],
+        rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
+                                    outName=I(matched[latest, "submitName"]),
                                     deleteFlag=delete,
                                     caseFlag=TRUE,
                                     looseFlag=FALSE))
@@ -784,7 +784,7 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
   runFile = rubric$runFile
   reqFiles = trimws(strsplit(rubric$reqFiles, ";")[[1]])
   optFiles = trimws(strsplit(rubric$optFiles, ";")[[1]])
-  
+
   # Get the one run file (may take two attempts if .RRmd is specified)
   if (length(grep("[.]RRmd", runFile)) > 0) {
     runFile = c(gsub("[.]RRmd", ".R", runFile), gsub("[.]RRmd", ".Rmd", runFile))
