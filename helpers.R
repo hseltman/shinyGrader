@@ -892,12 +892,13 @@ setupSandbox = function(studentEmail, currentFiles) {
     thisCF = currentFiles
     what = try(suppressWarnings(load(cfPath)), silent=TRUE)
     if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
-      if (isTRUE(all.equal(thisCF$runFile, currentFiles$runFile)) &&
-          isTRUE(all.equal(thisCF$reqFiles, currentFiles$reqFiles)) &&
-          isTRUE(all.equal(thisCF$optFiles, currentFiles$optFiles))) {
+      if (!isTRUE(all.equal(thisCF$runFile$inName, currentFiles$runFile$inName)) ||
+          !isTRUE(all.equal(thisCF$reqFiles$inName, currentFiles$reqFiles$inName)) ||
+          !isTRUE(all.equal(thisCF$optFiles$inName, currentFiles$optFiles$inName))) {
         useLastDir = FALSE
-      } else {
         currentFiles = thisCF
+      } else {
+        useLastDir = TRUE
       }
     }
   }
