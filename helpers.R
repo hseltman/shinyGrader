@@ -535,7 +535,7 @@ isProblemActive = function(problem) {
 # Convert input$selectStudent to an ID number and email
 selectStudentInfo = function(ss, roster) {
   if (ss == "(none)") return(NULL)
-  if (substring(ss, 1, 11) == "Instructor;") return(0)
+  if (substring(ss, 1, 10) == "Instructor") return(0)
   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
   emails = gsub("@.*", "", roster$Email)
   index = which(email == emails)
@@ -552,6 +552,7 @@ selectStudentInfo = function(ss, roster) {
 # The columns are:
 #   inName: name of the original file in the working directory
 #   outName: name in should have in the sandbox
+#   directory: location relative to working diretory / sandbox
 #   deleteFlag: should be deleted after use
 #   caseFlag: case was wrong
 #   looseFlag: file name convention not strictly followed
@@ -563,6 +564,8 @@ selectStudentInfo = function(ss, roster) {
 #   Just a "{{reg. exp.}}" indicates matching (without renaming).
 #   A final "-" indicates that the file should be deleted from
 #     the sandbox after use.
+#   A non-Canvas file can be in a specified directory, which will
+#     be created as a subdirectory of the sandbox.
 #
 # If secondary matching finds multiple files, NULL is returned.
 #
@@ -628,12 +631,15 @@ matchFile = function(fs, studentFiles, otherFiles) {
   ### Handle finding the file in "other" (non-Canvas file) ###
   ############################################################
   if (!Canvas) {
+    directory = dirname(fs)
+    fs = basename(fs)
     if (fs != "") { # Try direct match
       indices = grep(fs, otherFiles) # length is always 0 or 1
       if (length(indices) > 0) {
         # non-Canvas exact match
         return(data.frame(inName=I(fs),
                           outName=I(fs),
+                          directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=FALSE))
@@ -645,6 +651,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
         # Non-Canvas RE "loosening" finds one match
         return(data.frame(inName=I(otherFiles[indices]),
                           outName=I(fs),
+                          directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=FALSE))
@@ -654,6 +661,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
         # Non-Canvas (sole) RE finds match(es)
         return(data.frame(inName=I(otherFiles[indices]),
                           outName=I(otherFiles[indices]),
+                          directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=FALSE))
@@ -667,6 +675,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
   ### Handle finding the file in 'Canvas' ###
   ###########################################
   if (nrow(studentFiles) == 0) return(NULL)
+  directory = ""
   # First try exact target match
   if (fs != "") {
     # Note: may have multiple submissions (-1, etc.)
@@ -678,6 +687,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
       latest = which.max(matched$resubmitNumber)
       return(data.frame(inName=I(matched[latest, "canvasName"]),
                         outName=I(fs),
+                        directory=I(directory),
                         deleteFlag=delete,
                         caseFlag=FALSE,
                         looseFlag=FALSE))
@@ -692,6 +702,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
       latest = which.max(matched$resubmitNumber)
       return(data.frame(inName=I(matched[latest, "canvasName"]),
                         outName=I(fs),
+                        directory=I(directory),
                         deleteFlag=delete,
                         caseFlag=TRUE,
                         looseFlag=FALSE))
@@ -714,6 +725,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
         latest = which.max(matched$resubmitNumber)
         return(data.frame(inName=I(matched[latest, "canvasName"]),
                           outName=I(matched[latest, "submitName"]),
+                          directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
                           looseFlag=TRUE))
@@ -728,6 +740,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
           latest = which.max(matched$resubmitNumber)
           rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
                                       outName=I(fs),
+                                      directory=I(directory),
                                       deleteFlag=delete,
                                       caseFlag=FALSE,
                                       looseFlag=TRUE))
@@ -747,6 +760,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
         latest = which.max(matched$resubmitNumber)
         rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
                                     outName=I(matched[latest, "submitName"]),
+                                    directory=I(directory),
                                     deleteFlag=delete,
                                     caseFlag=FALSE,
                                     looseFlag=FALSE))
@@ -764,6 +778,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
         latest = which.max(matched$resubmitNumber)
         rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
                                     outName=I(matched[latest, "submitName"]),
+                                    directory=I(directory),
                                     deleteFlag=delete,
                                     caseFlag=TRUE,
                                     looseFlag=FALSE))
@@ -797,6 +812,11 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
   if (is.null(runDf) && length(runFile) > 2) {
     runDf = matchFile(runFile[2], studentFiles, otherFiles)
   }
+  if (is.null(runDf)) {
+    runMissing = rubric$runFile
+  } else {
+    runMissing = NULL
+  }
   
   # Get required and optional files
   reqDf = lapply(reqFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
@@ -806,6 +826,7 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
   optDf = lapply(optFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
   optDf = do.call(rbind, optDf)
   return(list(runDf=runDf,
+              runMissing=runMissing,
               reqMissing=reqMissing,
               reqDf=reqDf,
               optDf=optDf))

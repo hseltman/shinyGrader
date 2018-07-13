@@ -299,7 +299,7 @@ function(input, output, session) {
   observeEvent(c(roster$serialNum, input$selectStudent, input$currentProblem,
                  rubrics(), allFiles()), {
     rubNow = rubrics()
-    id = selectStudentToId(input$selectStudent, roster$roster)
+    id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
     if (is.null(id) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
     } else {
@@ -436,13 +436,17 @@ function(input, output, session) {
     
     runDf = cf$runDf
     if (is.null(runDf)) {
-      cat("No run file found.\n")
+      cat("No run file (",
+          cf$runMissing, ") found.\n", sep="")
     } else if (nrow(runDf) == 2) {
       cat("Error: Multiple run files found: ", paste(runDf$inName, sep=", "), "\n")
     } else {
-      cat("Run file: ", runDf$inName,
-          ifelse(runDf$caseFlag, "(case error)\n",
-                 ifelse(runDf$looseFlag, "(naming error)\n", "\n")))
+      cat("Run file: ",
+          ifelse(runDf$directory == ".", "", paste0(runDf$directory, "/")),
+                 runDf$inName,
+          ifelse(runDf$caseFlag, " (case error)\n",
+                 ifelse(runDf$looseFlag, " (naming error)\n", "\n")),
+          sep="")
     }
     
     reqDf = cf$reqDf
@@ -450,9 +454,11 @@ function(input, output, session) {
     if (length(reqFiles) > 0) {
       cat("\nRequired files:\n")
       for (ii in seq(along=reqFiles)) {
-        cat(reqFiles[ii],
-            ifelse(reqDf$caseFlag[ii], "(case error)\n",
-                   ifelse(reqDf$looseFlag[ii], "(naming error)\n", "\n")))
+        cat(ifelse(reqDf$directory[ii] == ".", "", paste0(reqDf$directory[ii], "/")),
+            reqFiles[ii],
+            ifelse(reqDf$caseFlag[ii], " (case error)\n",
+                   ifelse(reqDf$looseFlag[ii], " (naming error)\n", "\n")),
+            sep="")
       }
     }
     
@@ -461,9 +467,11 @@ function(input, output, session) {
     if (length(optFiles) > 0) {
       cat("\nOptional files:\n")
       for (ii in seq(along=optFiles)) {
-        cat(optFiles[ii],
-            ifelse(optDf$caseFlag[ii], "(case error)\n",
-                   ifelse(optDf$looseFlag[ii], "(naming error)\n", "\n")))
+        cat(ifelse(optDf$directory[ii] == ".", "", paste0(optDf$directory[ii], "/")),
+            optFiles[ii],
+            ifelse(optDf$caseFlag[ii], " (case error)\n",
+                   ifelse(optDf$looseFlag[ii], " (naming error)\n", "\n")),
+            sep="")
       }
     }
     
