@@ -45,3 +45,4 @@ solution_0_0_hw2.R
 *.sas
 submissions.zip
 solution_0_0_hw3.R
+data/*
