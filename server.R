@@ -303,28 +303,12 @@ function(input, output, session) {
     if (is.null(id) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
     } else {
-      #prob = as.numeric(substring(input$currentProblem, 9))
       prob = getCurrentProblem(input$currentProblem)
       currentFiles(findCurrentFiles(id, allFiles(), rubNow[[prob]]))
     }
   }, ignoreInit=TRUE)
-    
-    
 
-  # observeEvent(codingFiles(), {
-  #   cf = codingFiles()
-  #   req(cf)
-  #   #updateCheckboxGroupInput(session, "codeFileCheckboxes",
-  #   #                         choices=cf, inline=TRUE)
-  # })
 
-  # ????
-  # observeEvent(input$codeFileCheckboxes, {
-  #   cfSel = input$codeFileCheckboxes
-  #   updateRadioButtons(session, "codefile",
-  #                            choices=cfSel, inline=TRUE)
-  # }, ignoreInit=TRUE)
-    
   # Handle change in courseId
   observeEvent(input$courseId, {
     cid = input$courseId
@@ -406,7 +390,7 @@ function(input, output, session) {
   observeEvent(input$runOne, {
     req(currentFiles(), roster$roster)
     cf = currentFiles()
-    browser()
+    ###browser()
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
     studentEmail = studentInfo["email"]
     path = setupSandbox(studentEmail, cf)
@@ -436,8 +420,7 @@ function(input, output, session) {
     
     runDf = cf$runDf
     if (is.null(runDf)) {
-      cat("No run file (",
-          cf$runMissing, ") found.\n", sep="")
+      cat("No run file (", cf$runMissing, ") found.\n", sep="")
     } else if (nrow(runDf) == 2) {
       cat("Error: Multiple run files found: ", paste(runDf$inName, sep=", "), "\n")
     } else {
