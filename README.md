@@ -1,5 +1,5 @@
 # shinyGrader
-Automatic grading of R, Pytnon, and SAS in a Shiny App (tuned to Canvas course management system)
+Automatic grading of R, Python, and SAS in a Shiny App (tuned to Canvas course management system)
 
 This Shiny App (https://shiny.rstudio.com/) manages grading and regrading of homework assignments in R, Python or SAS.  Configuration files specify ancillary files, various options, and a grading rubric.  Code is run in a sandbox.  The rubric uses regular expression matching on code input and output.
 
