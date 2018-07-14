@@ -535,7 +535,7 @@ isProblemActive = function(problem) {
 # Convert input$selectStudent to an ID number and email
 selectStudentInfo = function(ss, roster) {
   if (ss == "(none)") return(NULL)
-  if (substring(ss, 1, 10) == "Instructor") return(0)
+  #if (substring(ss, 1, 10) == "Instructor") return(0)
   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
   emails = gsub("@.*", "", roster$Email)
   index = which(email == emails)
@@ -675,7 +675,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
   ### Handle finding the file in 'Canvas' ###
   ###########################################
   if (nrow(studentFiles) == 0) return(NULL)
-  directory = ""
+  directory = "."
   # First try exact target match
   if (fs != "") {
     # Note: may have multiple submissions (-1, etc.)
@@ -860,7 +860,7 @@ getCurrentProblem = function(probString) {
 #
 # INPUT:
 #  studentEmail: students full email address
-#  currentFiles: result of calling getCurrentFiles()
+#  currentFiles: result of calling findCurrentFiles()
 #
 # OUTPUT: path to sandbox (or NULL if unsuccessful)
 #
@@ -884,18 +884,18 @@ getCurrentProblem = function(probString) {
 #
 setupSandbox = function(studentEmail, currentFiles) {
   studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
-  browser()
-  
+
   # Set up top student directory and 'lastDir'
   if (! dir.exists(studentEmail)) {
-    if (!dir.create(studentEmail, showWarnings=FALSE)) return(FALSE)
-    if (!dir.create(file.path(studentEmail, "1"), showWarnings=FALSE)) return(FALSE)
+    if (!dir.create(studentEmail, showWarnings=FALSE)) {
+      dualAlert("Sandbox error", paste("Cannot create", studentEmail))
+      return(NULL)
+    }
     lastDir = 0  # most recently used attempt
   } else {
     dirs = basename(list.dirs(studentEmail, recursive=FALSE))
     dirs = grep("^[1-9][0-9]?$", dirs, value=TRUE)
     if (length(dirs) == 0) {
-      if (!dir.create(file.path(studentEmail, "1"), showWarnings=FALSE)) return(FALSE)
       lastDir = 0      
     } else {
       lastDir = max(as.numeric(dirs))
@@ -924,14 +924,49 @@ setupSandbox = function(studentEmail, currentFiles) {
     }
   }
   
+  # Create new subdirectory if needed
   if (!useLastDir) {
     thisDir = lastDir + 1
-    if (!dir.create(file.path(studentEmail, lastDir + 1), showWarnings=FALSE)) return(FALSE)
+    dirPath = file.path(studentEmail, thisDir)
+    if (!dir.create(dirPath, showWarnings=FALSE)) {
+      dualAlert("Sandbox error", paste("Cannot create", dirPath))
+      return(NULL)
+    }
     save(currentFiles, file=file.path(studentEmail, thisDir, "shinyGraderCF.RData"))
   } else {
     thisDir = lastDir
   }
-  path = file.path(studentEmail, thisDir)
+  sandbox = file.path(studentEmail, thisDir)
   
-  print(path)
+  # Copy files to sandbox
+  allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
+  inTime = file.info(file.path(allDf$directory, allDf$inName))$atime
+  outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$atime
+  for (row in 1:nrow(allDf)) {
+    this = allDf[row, ]
+    outDir = file.path(sandbox, this$directory)
+    copy = FALSE
+    if (is.na(outTime[row])) {
+      copy = TRUE
+      if (this$directory != "." && !dir.exists(outDir)) {
+        if (!dir.create(file.path(outDir))) {
+          dualAlert("Sandbox error", paste("Cannot create", outDir))
+          return(NULL)
+        }
+      }
+    } else {
+      if (inTime[row] > outTime[row])
+        copy = TRUE
+    }
+    if (copy) {
+      from = file.path(this$directory, this$inName)
+      if (!file.copy(from, file.path(outDir, this$outName),
+                     overwrite=TRUE, copy.date=TRUE)) {
+        dualAlert("Sandbox error", 
+                  paste("Cannot copy", from, "to", outDir))
+        return(NULL)
+      }
+    }
+  }
+  return(sandbox)
 } # end setupSandbox()
