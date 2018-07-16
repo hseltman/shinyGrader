@@ -12,8 +12,11 @@ function(input, output, session) {
   # Stop it if the browser window is closed.
   session$onSessionEnded(stopApp)
   
+  # Cheat for dualAlert() in "helpers.R"
+  assign("shinyIsRunning", TRUE, env=.GlobalEnv)
+  
   ### Setup for current directory (things that will change if ###
-  ### the user changes directories.                           ###
+  ### the user changes directories).                         ###
   
   
   # Create initial status object
@@ -81,7 +84,7 @@ function(input, output, session) {
   
   # Store student "name (email)" and allow observers to know when it changes
   if (is.null(staticRoster)) {
-    students = reactiveVal("(none)")
+    browser()
   } else {
     shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
     students = reactiveVal(paste0(staticRoster[["Name"]],
@@ -139,31 +142,36 @@ function(input, output, session) {
     # A supposed roster file was found, but it may not be a valid roster file,
     # so first try to read it.
     rostName = rosterFileName()
-    newRoster = getRoster(rostName, globalConfig()[["instructorEmail"]])
-
-    if (is.null(newRoster)) {
-      if (rostName != "") rosterFileName("")
-      #shinyalert("No roster file", "No roster found in the usual places!",
-      #           type = "warning")
-    } else {
-      # Update global config's 'rosterDirectory' to point to this roster
-      gc = globalConfig()
-      rostDir = dirname(rostName)
-      globalConfig(updateGlobalConfig(gc, list(rosterDirectory=rostDir)))
-      # Update Assignment tab to show this roster's location
+    if (rostName != "fakeRoster") {
+      newRoster = getRoster(rostName, globalConfig()[["instructorEmail"]])
       
+      
+      if (is.null(newRoster)) {
+        if (rostName != "") rosterFileName("")
+      } else {
+        if (attr(newRoster, "file") == file.path(getwd(), "fakeRoster")) {
+          rostDir = ""
+          rosterFileName("fakeRoster")
+        } else {
+          rostDir = dirname(rostName)
+        }
+        # Update global config's 'rosterDirectory' to point to this roster
+        gc = globalConfig()
+        globalConfig(updateGlobalConfig(gc, list(rosterDirectory=rostDir)))
+        # Update Assignment tab to show this roster's location
+        
+      }
+      
+      # Let the app know that there is a new roster
+      roster$roster = newRoster
+      roster$serialNum = roster$serialNum + 1
     }
-    
-    # Let the app know that there is a new roster (or none)
-    roster$roster = newRoster
-    roster$serialNum = roster$serialNum + 1
   }, ignoreInit=TRUE)
   
   # Handle new roster
   observeEvent(roster$serialNum, {
     if (is.null(roster$roster)) {
-      shinyjs::html(id="currentRoster", "")
-      students("(none)")
+      browser()
     } else {
       rost = roster$roster
       shinyjs::html(id="currentRoster", 
@@ -177,18 +185,18 @@ function(input, output, session) {
   
   observeEvent(students(), {
     st = students()
-    if (length(st) == 1 && st == "(none)") {
-      updateSelectInput(session, "selectStudent", label="0 Students (Canvas name; email)",
-                        choices=st, selected="(none)")
-      shinyjs::disable("selectStudent")
-      shinyjs::disable("runOne")
-    } else {
+    # if (length(st) == 1 && st == "(none)") {
+    #   updateSelectInput(session, "selectStudent", label="0 Students (Canvas name; email)",
+    #                     choices=st, selected="(none)")
+    #   shinyjs::disable("selectStudent")
+    #   shinyjs::disable("runOne")
+    # } else {
       updateSelectInput(session, "selectStudent", 
                         label=paste(length(st) - 1, "Students (Canvas name; email)"),
                         choices=st, selected=st[1])
       shinyjs::enable("selectStudent")
       shinyjs::enable("runOne")
-    }
+    # }
   })
   
   
@@ -394,8 +402,9 @@ function(input, output, session) {
     studentEmail = studentInfo["email"]
     path = setupSandbox(studentEmail, cf)
     if (!is.null(path) && length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
-      results = runCode(studentEmail, path, cf$runDf$outName)
-      print(results)
+      if (runCode(studentEmail, path, cf$runDf$outName)) {
+        
+      }
     }
   })
   

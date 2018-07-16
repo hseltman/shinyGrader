@@ -58,7 +58,7 @@ fluidPage(
                    inline=TRUE),
       fluidRow(column(5, disabled(selectInput("selectStudent",
                                               "0 Students (Canvas name; email)",
-                                              "(none)", width="100%"))),
+                                              "Instructor (solution;)", width="100%"))),
                column(7, verbatimTextOutput("filesForOne"))),
       disabled(actionButton("runOne", "Run one student")),
       p("Grade all"),

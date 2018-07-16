@@ -5,6 +5,8 @@ source("helpers.R") # many misc. functions
 source("setup.R") # constants and global config functions
 source("genProblemTabs.R") # code to generate UI "Problems" tab
 
+shinyIsRunning=FALSE
+
 # Set variables to match pre-defined environmental variables
 envLoc = Sys.getenv("SHINYGRADER_GLOBAL_CONFIG")
 if (envLoc != "" && is.na(file.info(envLoc)$mode)) {

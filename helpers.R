@@ -275,8 +275,8 @@ getRoster = function(rosterFileName, instructorEmail="") {
   }
   
   # Determine if the Shiny is running yet, to decide if shinyalert() will work
-  inSession = exists("session", env=parent.env(parent.frame())) &&
-              is(get("session", env=parent.env(parent.frame())), "ShinySession")
+  # inSession = exists("session", env=parent.env(parent.frame())) &&
+  #             is(get("session", env=parent.env(parent.frame())), "ShinySession")
   
   # Get names of columns to read from a setup.R constant
   rosterNames = names(CANVAS_ROSTER_NAMES)
@@ -286,18 +286,22 @@ getRoster = function(rosterFileName, instructorEmail="") {
   # Stupid Canvas roster has "Points Possible" on line 2!!!
   # It also has an encoding string at the beginning, so we must specify UTF-8.
   roster = try(suppressWarnings(readLines(rosterFileName, encoding="UTF-8")))
-  if (is(roster, "try-error")) return(NULL)
+  if (is(roster, "try-error")) {
+    dualAlert("Bad roster", paste("Cannot read", rosterFileName))
+    return(fake)
+  }
   #
   if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
   roster = try(suppressWarnings(read.csv(textConnection(roster), as.is=TRUE)), silent=TRUE)
-  if (is(roster, "try-error")) {
+  if (!is(roster, "data.frame") || is.null(names(roster))) {
     msg = paste("Invalid roster file:", rosterFileName)
-    if (inSession) {
-      shinyalert("Bad roster file", msg, type = "warning")
-    } else {
-      warning("Bad roster file: (", rosterFileName, ") ", msg)
-    }
-    return(NULL)
+    dualAlert("Bad roster file format", msg)
+    # if (inSession) {
+    #   shinyalert("Bad roster file", msg, type = "warning")
+    # } else {
+    #   warning("Bad roster file: (", rosterFileName, ") ", msg)
+    # }
+    return(fake)
   }
   # Note: no usage of encoding="UTF-8" fixes the byte-order-mark that may be present
   if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.")
@@ -306,14 +310,15 @@ getRoster = function(rosterFileName, instructorEmail="") {
   # Get the correct column names for shinyGrader
   badColNames = !make.names(canvasNames) %in% names(roster)
   if (any(badColNames)) {
-    msg = paste0("missing from roster: ",
+    msg = paste0("Missing from roster: ",
                  paste(canvasNames[badColNames], collapse=", "))
-    if (inSession) {
-      shinyalert(paste("Bad roster file (", rosterFileName, ") ", msg), type = "warning")
-    } else {
-      warning("Bad roster file: (", rosterFileName, ") ", msg)
-    }
-    return(NULL)
+    dualAlert("Bad roster file format", msg)
+    # if (inSession) {
+    #   shinyalert(paste("Bad roster file (", rosterFileName, ") ", msg), type = "warning")
+    # } else {
+    #   warning("Bad roster file: (", rosterFileName, ") ", msg)
+    # }
+    return(fake)
   }
   
   # Rename the columns to shinyGrader column names
@@ -321,12 +326,13 @@ getRoster = function(rosterFileName, instructorEmail="") {
   if (is(roster, "try-error")) {
     msg = paste0("Roster columns ", paste(canvasNames, collapse=", "),
                  " not all in ", rosterFileName)
-    if (inSession) {
-      shinyalert("Bad roster file", msg, type = "warning")
-    } else {
-      warning("Bad roster file: ", msg)
-    }
-    return(NULL)
+    dualAlert("Bad roster file", msg)
+    # if (inSession) {
+    #   shinyalert("Bad roster file", msg, type = "warning")
+    # } else {
+    #   warning("Bad roster file: ", msg)
+    # }
+    return(fake)
   }
   names(roster) = rosterNames
   
@@ -334,21 +340,23 @@ getRoster = function(rosterFileName, instructorEmail="") {
   two = strsplit(roster$Name, ",")
   if (any(sapply(two, length) != 2)) {
     msg = "Names in Canvas roster not in last, first format!"
-    if (inSession) {
-      shinyalert("Bad roster file", msg, type = "warning")
-    } else {
-      warning("Bad roster file: ", msg)
-    }
-    return(NULL)
+    dualAlert("Bad roster file format", msg)
+    # if (inSession) {
+    #   shinyalert("Bad roster file", msg, type = "warning")
+    # } else {
+    #   warning("Bad roster file: ", msg)
+    # }
+    return(fake)
   }
   roster$CanvasName = I(sapply(two,
                                function(LF) {
                                  tolower(paste0(gsub(" ", "", LF[1]),
                                                 gsub(" ", "", LF[2])))
                                }))
+  roster = rbind(fake, roster)
   attr(roster, "file") = rosterFileName
 
-    return(rbind(fake, roster))
+  return(roster)
 } # end getRoster()
 
 
@@ -535,7 +543,7 @@ isProblemActive = function(problem) {
 
 # Convert input$selectStudent to an ID number and email
 selectStudentInfo = function(ss, roster) {
-  if (ss == "(none)") return(NULL)
+  if (ss == "(none)") browser()
   #if (substring(ss, 1, 10) == "Instructor") return(0)
   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
   emails = gsub("@.*", "", roster$Email)
@@ -839,8 +847,11 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
 #
 dualAlert = function(title, msg) {
   # Determine if the Shiny is running yet, to decide if shinyalert() will work
-  inSession = exists("session", env=parent.env(parent.frame())) &&
-    is(get("session", env=parent.env(parent.frame())), "ShinySession")
+  #inSession = exists("session", env=parent.env(parent.frame())) &&
+  #  is(get("session", env=parent.env(parent.frame())), "ShinySession")
+  
+  inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
+              get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
   
   if (inSession) {
     shinyalert(title, msg, type = "warning")
