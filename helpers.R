@@ -19,6 +19,7 @@
 #   matchFile()
 #   dualAlert()
 #   setupSandbox()
+#   runCode()
 
 # Convert a special kind of text file into a named list.
 #
@@ -940,8 +941,8 @@ setupSandbox = function(studentEmail, currentFiles) {
   
   # Copy files to sandbox
   allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
-  inTime = file.info(file.path(allDf$directory, allDf$inName))$atime
-  outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$atime
+  inTime = file.info(file.path(allDf$directory, allDf$inName))$mtime
+  outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$mtime
   for (row in 1:nrow(allDf)) {
     this = allDf[row, ]
     outDir = file.path(sandbox, this$directory)
@@ -970,3 +971,60 @@ setupSandbox = function(studentEmail, currentFiles) {
   }
   return(sandbox)
 } # end setupSandbox()
+
+
+# Run a user's code
+runCode = function(studentEmail, path, runFile) {
+  # Move to sandbox
+  wd = getwd()
+  if (is(try(setwd(path), silent=TRUE), "try-error")) {
+    dualAlert("Error running code", paste("Cannot change director to ", path))
+    return(1)
+  }
+  on.exit(setwd(wd))
+  
+  # Get execution type
+  ext = gsub("(.*)([.][^.]+)", "\\2", runFile)
+  
+  if (ext == ".R") {
+    rtn = runR(runFile)
+  } else if (ext == ".Rmd") {
+    rtn = runRmd(runFile)
+  } else if (ext == ".py") {
+    rtn = runPy(runFile)
+  } else if (ext == ".sas") {
+    rtn = runSas(runFile)
+  } else {
+    dualAlert("Run Code Error", paste(ext, "is not a valid code extension"))
+    return(FALSE)
+  }
+  
+  return(rtn)
+}
+
+
+# Run R Code
+runR = function(runFile) {
+  args = paste("CMD BATCH --no-restore --no-save --quiet", runFile)
+  rtn = try(system2("R", args, invisible=FALSE), silent=TRUE)
+  if (is(rtn, "try-error")) {
+    return(FALSE)
+  }
+  return(TRUE)
+}
+
+# Run Rmd Code
+runRmd = function(runFile) {
+  return(FALSE)
+}
+
+# Run Python Code
+runPy = function(runFile) {
+  return(FALSE)
+}
+
+# Run SAS Code
+runSas = function(runFile) {
+  return(FALSE)
+}
+

@@ -390,11 +390,13 @@ function(input, output, session) {
   observeEvent(input$runOne, {
     req(currentFiles(), roster$roster)
     cf = currentFiles()
-    ###browser()
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
     studentEmail = studentInfo["email"]
     path = setupSandbox(studentEmail, cf)
-    if (is.null(path)) return
+    if (!is.null(path) && length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
+      results = runCode(studentEmail, path, cf$runDf$outName)
+      print(results)
+    }
   })
   
 
