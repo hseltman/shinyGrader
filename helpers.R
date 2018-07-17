@@ -19,6 +19,8 @@
 #   matchFile()
 #   dualAlert()
 #   setupSandbox()
+#   splitCodeRubric
+#   checkCode()
 #   runCode()
 
 # Convert a special kind of text file into a named list.
@@ -434,7 +436,8 @@ list.files.only = function(path=".") {
 # Use a regular expression to separate Canvas-created files
 # from other files.
 #
-# The intention is that the user can name a file "solution_0_0_name.ext".
+# The intention is that the user can name a file "solution_0_0_name.ext"
+# to be used for testing.
 #
 parseFileNames = function(filenames, RE) {
   ff = CANVAS_FILENAME_FORMAT
@@ -468,7 +471,6 @@ parseFileNames = function(filenames, RE) {
 # globalConfig = initializeGlobalConfig()
 # 
 # roster = getRoster("36602")
-# browser()
 # roster = getRoster(globalConfig[["courseId"]])
 # 
 # # Get current list of codefiles
@@ -543,8 +545,6 @@ isProblemActive = function(problem) {
 
 # Convert input$selectStudent to an ID number and email
 selectStudentInfo = function(ss, roster) {
-  if (ss == "(none)") browser()
-  #if (substring(ss, 1, 10) == "Instructor") return(0)
   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
   emails = gsub("@.*", "", roster$Email)
   index = which(email == emails)
@@ -565,6 +565,7 @@ selectStudentInfo = function(ss, roster) {
 #   deleteFlag: should be deleted after use
 #   caseFlag: case was wrong
 #   looseFlag: file name convention not strictly followed
+#   canvasFlag: file came from Canvas (i.e., it is a student file)
 #
 # The rules are:
 #   An initial "@" indicates a non-Canvas file.
@@ -651,7 +652,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                           directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
-                          looseFlag=FALSE))
+                          looseFlag=FALSE,
+                          canvasFlag=Canvas))
       }
       
     } else { # Try RE
@@ -663,7 +665,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                           directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
-                          looseFlag=FALSE))
+                          looseFlag=FALSE,
+                          canvasFlag=Canvas))
       }
       
       if (length(indices) > 0) {
@@ -673,7 +676,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                           directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
-                          looseFlag=FALSE))
+                          looseFlag=FALSE,
+                          canvasFlag=Canvas))
       }
     } # end try RE for non-Canvas
     # Non-Canvas non-match
@@ -699,7 +703,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                         directory=I(directory),
                         deleteFlag=delete,
                         caseFlag=FALSE,
-                        looseFlag=FALSE))
+                        looseFlag=FALSE,
+                        canvasFlag=Canvas))
     }
     
     # Try a case-insensitive match
@@ -714,7 +719,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                         directory=I(directory),
                         deleteFlag=delete,
                         caseFlag=TRUE,
-                        looseFlag=FALSE))
+                        looseFlag=FALSE,
+                        canvasFlag=Canvas))
     }
   } # end if an exact target was supplied
   
@@ -737,7 +743,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                           directory=I(directory),
                           deleteFlag=delete,
                           caseFlag=FALSE,
-                          looseFlag=TRUE))
+                          looseFlag=TRUE,
+                          canvasFlag=Canvas))
       }
       # Try "loosening" with ignore.case=TRUE
       indices = grep(fsRE, studentFiles$submitName, ignore.case=TRUE)
@@ -752,7 +759,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                                       directory=I(directory),
                                       deleteFlag=delete,
                                       caseFlag=FALSE,
-                                      looseFlag=TRUE))
+                                      looseFlag=TRUE,
+                                      canvasFlag=Canvas))
         }
       }
       # Exact target supplied, not found, and loosened version not found
@@ -772,7 +780,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                                     directory=I(directory),
                                     deleteFlag=delete,
                                     caseFlag=FALSE,
-                                    looseFlag=FALSE))
+                                    looseFlag=FALSE,
+                                    canvasFlag=Canvas))
       }
     }
     
@@ -790,7 +799,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
                                     directory=I(directory),
                                     deleteFlag=delete,
                                     caseFlag=TRUE,
-                                    looseFlag=FALSE))
+                                    looseFlag=FALSE,
+                                    canvasFlag=Canvas))
       }
     }
     # No wildcards found
@@ -925,9 +935,9 @@ setupSandbox = function(studentEmail, currentFiles) {
     thisCF = currentFiles
     what = try(suppressWarnings(load(cfPath)), silent=TRUE)
     if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
-      if (!isTRUE(all.equal(thisCF$runFile$inName, currentFiles$runFile$inName)) ||
-          !isTRUE(all.equal(thisCF$reqFiles$inName, currentFiles$reqFiles$inName)) ||
-          !isTRUE(all.equal(thisCF$optFiles$inName, currentFiles$optFiles$inName))) {
+      if (!isTRUE(all.equal(thisCF$runDf$inName, currentFiles$runDf$inName)) ||
+          !isTRUE(all.equal(thisCF$reqDf$inName, currentFiles$reqDf$inName)) ||
+          !isTRUE(all.equal(thisCF$optDf$inName, currentFiles$optDf$inName))) {
         useLastDir = FALSE
         currentFiles = thisCF
       } else {
@@ -1013,6 +1023,209 @@ runCode = function(studentEmail, path, runFile) {
   return(rtn)
 }
 
+# Split a specification string containing a set if code specification
+# by section ([filename] at the beginning of a line).
+# Return a named list based on section filename.  Call the first element "runfile"
+# if present and unnamed.
+splitCodeRubric = function(spec) {
+  if (length(spec) == 0) return(NULL)
+  spec = strsplit(spec, split="\n")[[1]]
+  boundaries = grep("^[[].+]$", spec)
+  
+  # Just an unnamed section:
+  if (length(boundaries) == 0) return(list(runFile=spec))
+  
+  # Drop any terminal section name
+  nLines = length(spec)
+  nSec = length(boundaries)
+  if (boundaries[nSec] == length(spec)) {
+    boundaries = boundaries[-nSec]
+    nSec = nSec - 1
+    if (nSec == 0) {
+      if (nLines == 1) {
+        return(NULL)
+      } else {
+        return(list(runFile=spec[-nLines]))
+      }
+    }
+  }
+  
+  # Store sections
+  secNames = sub("(^[[])(.+)(]$)", "\\2", spec[boundaries])
+  rtn = vector("list", nSec)
+  names(rtn) = secNames
+  start = boundaries + 1
+  if (nSec==1) {
+    end = nLines
+  } else {
+    end = c(boundaries[-1] - 1, nLines)
+  }
+  for (sec in 1:nSec) {
+    if (end[sec] >= start[sec])
+      rtn[[sec]] = spec[start[sec]:end[sec]]
+  }
+  
+  # Add in runFile specification if present
+  if (boundaries[1] > 1) {
+    rtn = c(list(runFile=spec[1:boundaries[1] - 1]), rtn)
+  }
+  
+  rtn = rtn[!sapply(rtn, is.null)]
+  return(rtn)
+}
+
+# Check code
+checkCode = function(path, cf, rubric) {
+  inputReq = splitCodeRubric(rubric$inputReq)
+  inputAnath = splitCodeRubric(rubric$inputAnath)
+  if(length(cf$runMissing) == 0) {
+    runName = cf$runDf$outName
+    runNonCanvas = cf$runDf$canvasFlag == FALSE
+  } else {
+    runName = cf$runMissing
+    runNonCanvas = FALSE
+  }
+  m = match("runFile", names(inputReq))
+  if (!is.na(m)) {
+    if (runNonCanvas) {
+      dualAlert("Bad rubric",
+                "Rubric's code requirements cannot refer to a non-Canvas file")
+      inputReq['runFile'] = NULL
+    } else {
+      names(inputReq)[m] = runName
+    }
+  }
+  m = match("runFile", names(inputAnath))
+  if (!is.na(m)) {
+    if (runNonCanvas) {
+      dualAlert("Bad rubric",
+                "Rubric's code anathema cannot refer to a non-Canvas file")
+      inputAnath['runFile'] = NULL
+    } else {
+      names(inputAnath)[m] = runName
+    }
+  }
+
+  allSectionNames = unique(c(names(inputReq), names(inputAnath)))
+  allCodeNames = c(runName, cf$reqDf$outName[cf$reqDf$canvasFlag])
+  secNotInCode = allSectionNames %in% allCodeNames == FALSE
+  if (any(secNotInCode)) {
+    badSecs = allSectionNames[secNotInCode]
+    dualAlert("Rubric error",
+              paste("Code input and/or anathema refers to missing code:",
+                    paste(badSecs, collapse=", ")))
+    
+    inputReq = inputReq[names(inputReq) %in% badSecs == FALSE]
+    if (length(inputReq) == 0) inputReq = NULL
+    inputAnath = inputAnath[names(inputAnath) %in% badSecs == FALSE]
+    if (length(inputAnath) == 0) inputAnath = NULL
+  }
+  
+  nReq = length(inputReq)
+  nAnath = length(inputAnath)
+  fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
+  both = c(inputReq, inputAnath)
+  # Get a list of data.frames of specification results, one per combo of file and Req vs. Anath
+  codeProblems = lapply(seq(along.with=both), 
+    function(index) {
+      file = names(both)[index]
+      anathema = fromAnathema[index]
+      specs = both[[index]]
+      txt = try(suppressWarnings(readLines(file.path(path, file), warn=FALSE)), silent=TRUE)
+      if (is(txt, "try-error")) {
+        fileFound = FALSE
+        txt = ""
+      } else {
+        fileFound = TRUE
+      }
+      dtf = testSpecs(specs, txt)
+      return(cbind(file=file, dtf, anathema=anathema))
+    }
+  )
+  
+  cc = do.call(rbind, codeProblems)
+  cc$mention = (cc$found == cc$anathema)  & !cc$badRE
+  cc$dock = 0
+  cc$dock[cc$mention] = cc$pts[cc$mention] *
+                        ifelse(cc$anathema[cc$mention], -1, 1)
+  
+  # Both save and return the final data.frame
+  save(cc, file=file.path(path, "codeProblems.RData"))
+  return(cc)
+}  # end checkCode()
+
+# test specification for a text
+testSpecs = function(specs, txt) {
+  rslt = lapply(specs,
+    function(spec) {
+      pspec = parseSpec(spec)
+      found = try(grep(pspec$pattern, txt, fixed=pspec$fixed), silent=TRUE)
+      if (is(found, "try-error")) {
+        err = as.character(attr(found, "condition"))
+        err = sub('(.*)(, reason )(.*)', "\\3", err)
+        nc = nchar(err)
+        if (substring(err, nc) == "\n") {
+          err = substring(err, 1, nc - 1)
+          nc = nc - 1
+        }
+        if (substring(err, 1, 1) =="'" && substring(err, nc) =="'")
+          err = substring(err, 2, nc - 1)
+        dualAlert("Rubric error",
+                  paste(pspec$pattern, "is not a valid regular expression\n", err))
+        found = FALSE
+        badRE = TRUE
+      } else {
+        found = length(found) > 0
+        badRE = FALSE
+      }
+      return(cbind(pspec, found, badRE))
+    }
+  )
+  return(do.call(rbind, rslt))
+}
+
+
+# parse a specification
+parseSpec = function(spec) {
+  spec = trimws(spec)
+  # Compute points and message from the "{pts:message}" prefix
+  preLoc = regexpr("(^[{].*[}])", spec)
+  if (preLoc[1] == -1) {
+    pts = 0
+    msg = ""
+    pattern = spec
+  } else {
+    preLen = attr(preLoc, "match.length")
+    prefix = substring(spec, 2, preLen - 1)
+    if (prefix == "") {
+      pts = 0
+      msg = ""
+    } else {
+      pm = strsplit(prefix, ":")[[1]]
+      pts = suppressWarnings(as.numeric(pm[1]))
+      if (is.na(pts)) {
+        dualAlert("Rubric error",
+                  "In requirements and anathemas, a point count must come first inside '{}'.")
+        pts = 0
+      }
+      msg = ifelse(length(pm) > 1, paste(pm[-1], collapse=":"), "")
+    }
+    pattern = trimws(substring(spec, preLen+1))
+  } # end dealing with the prefix
+  
+  
+  # Set for 'fixed' or not
+  c1 = substring(pattern, 1, 1)
+  cN = substring(pattern, nchar(pattern))
+  if (c1 == cN && c1 %in% c("'", '"')) {
+    pattern = substring(pattern, 2, nchar(pattern) - 1)
+    fixed = TRUE
+  } else {
+    fixed = FALSE
+  }
+  
+  return(data.frame(pts, msg=I(msg), pattern=I(pattern), fixed))
+}
 
 # Run R Code
 runR = function(runFile) {

@@ -401,11 +401,19 @@ function(input, output, session) {
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
     studentEmail = studentInfo["email"]
     path = setupSandbox(studentEmail, cf)
-    if (!is.null(path) && length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
-      if (runCode(studentEmail, path, cf$runDf$outName)) {
-        
-      }
-    }
+    if (!is.null(path)) {
+      prob = getCurrentProblem(input$currentProblem)
+      rubric = rubrics()[[prob]]
+      cc = checkCode(path, cf, rubric)
+      print(cc)
+      
+      
+      if (length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
+        if (runCode(studentEmail, path, cf$runDf$outName)) {
+      
+        }
+      } 
+    } # end if path not null (setup succeeded)
   })
   
 
