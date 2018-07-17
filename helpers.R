@@ -19,8 +19,10 @@
 #   matchFile()
 #   dualAlert()
 #   setupSandbox()
-#   splitCodeRubric
+#   splitCodeRubric()
 #   checkCode()
+#   testSpecs()
+#   parseSpec()
 #   runCode()
 
 # Convert a special kind of text file into a named list.
@@ -1146,8 +1148,7 @@ checkCode = function(path, cf, rubric) {
   cc = do.call(rbind, codeProblems)
   cc$mention = (cc$found == cc$anathema)  & !cc$badRE
   cc$dock = 0
-  cc$dock[cc$mention] = cc$pts[cc$mention] *
-                        ifelse(cc$anathema[cc$mention], -1, 1)
+  cc$dock[cc$mention] = cc$pts[cc$mention]
   
   # Both save and return the final data.frame
   save(cc, file=file.path(path, "codeProblems.RData"))
@@ -1189,7 +1190,7 @@ testSpecs = function(specs, txt) {
 parseSpec = function(spec) {
   spec = trimws(spec)
   # Compute points and message from the "{pts:message}" prefix
-  preLoc = regexpr("(^[{].*[}])", spec)
+  preLoc = regexpr("(^[{].*?[}])", spec)
   if (preLoc[1] == -1) {
     pts = 0
     msg = ""
@@ -1204,9 +1205,11 @@ parseSpec = function(spec) {
       pm = strsplit(prefix, ":")[[1]]
       pts = suppressWarnings(as.numeric(pm[1]))
       if (is.na(pts)) {
-        dualAlert("Rubric error",
-                  "In requirements and anathemas, a point count must come first inside '{}'.")
         pts = 0
+        if (pm[1]!="") {
+          dualAlert("Rubric error",
+                    "In requirements and anathemas, a point count must come first inside '{}'.")
+        }
       }
       msg = ifelse(length(pm) > 1, paste(pm[-1], collapse=":"), "")
     }
