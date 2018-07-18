@@ -11,10 +11,27 @@ function(input, output, session) {
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
   session$onSessionEnded(function() {
-    # Add code to check rubric#Dirty() and gcDirty()
-    # and save values if dirty.
+    # Check rubric#Dirty() and gcDirty() and save values if dirty.
+    for (prob in 1:PROBLEM_COUNT) {
+      if (eval(parse(text=paste0("isolate(rubric", prob, "Dirty())")))) {
+        updateRubric(prob)
+      }
+    }
     stopApp()
   })
+  
+  # Store rubric data for any problem in its save() file.
+  # Use isolate() so that this can also be called from the session$onSessionEnded()
+  # context.
+  updateRubric = function(prob) {
+    n = length(problemInputIds)
+    lst = vector('list', n)
+    names(lst) = problemInputIds
+    for (id in problemInputIds) {
+      eval(parse(text=paste0("lst[['", id, "']] = isolate(input[['", id, prob, "']])")))
+    }
+    saveRubric(prob, lst)
+  }
   
   # Cheat for dualAlert() in "helpers.R"
   assign("shinyIsRunning", TRUE, env=.GlobalEnv)
@@ -128,9 +145,11 @@ function(input, output, session) {
   for (problem in 1:PROBLEM_COUNT) {
     eval(parse(text=paste0("rubric", problem, "Dirty = reactiveVal(FALSE)")))
   }
+  rm(problem)
 
   # Keep track of last tab
   lastTab = reactiveVal("Assignment")
+
     
   ########################
   ### Create observers ###
@@ -278,16 +297,6 @@ function(input, output, session) {
     total = paste0('<strong>Total points: ', total, '</strong>')
     shinyjs::html(id='totalPoints', total)
     
-    # It's hard to figure out a way to make the 'submitProblemRubric#' buttons
-    # be enabled by a change to any element on the page, and also be disabled
-    # after a new set of values is read from a file and the widgets are updated.
-    # This half second delay works!
-    for (problem in 1:PROBLEM_COUNT) {
-      code = paste0("shinyjs::delay(500, shinyjs::disable('submitProblemRubric",
-                    problem,"'))")
-      eval(parse(text=code))
-    }
-    
     # Update activeProblems
     activeProblems(which(sapply(rubNow, isProblemActive)))
   })
@@ -321,11 +330,19 @@ function(input, output, session) {
     }
   }, ignoreInit=TRUE)
 
-
+  # Assure that when user moves away from the problem tabs, any dirty
+  # rubrics are saved.
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
-    browser()
+    if (last == "Problems") {
+      for (prob in 1:PROBLEM_COUNT) {
+        if (eval(parse(text=paste0("rubric", prob, "Dirty()")))) {
+          updateRubric(prob)
+          eval(parse(text=paste0("rubric", prob, "Dirty(FALSE)")))
+        }
+      }
+    }
     
     lastTab(this)
   }, ignoreNULL=TRUE, ignoreInit=TRUE, priority=10)
@@ -371,41 +388,16 @@ function(input, output, session) {
                       paste0("shinyjs::enable('submitProblemRubric", problem, "')"),
                       "}, ignoreInit=TRUE)")))
   }
+  rm(problem)
 
-  # Construct observer for each 'submitProblemRubric'
+  # For each problem rubric, construct observer for all elements
   for (problem in 1:PROBLEM_COUNT) {
-    assigns = paste0("lst[['", problemInputIds, "']] = ",
-                     "input$", problemInputIds, problem)
-    eval(parse(text=c(paste0("observeEvent(input$", 'submitProblemRubric', problem, ", {"),
-                      paste0("shinyjs::disable('submitProblemRubric", problem, "')"),
-                      paste0("n = length(problemInputIds)"),
-                      "lst = vector('list', n)",
-                      paste0("names(lst) = problemInputIds"),
-                      assigns,
+    obsList = paste(paste0("input$", problemInputIds, problem), collapse=", ")
+    eval(parse(text=c(paste0("observeEvent(c(", obsList, "), {"),
                       paste0("rubric", problem, "Dirty(TRUE)"),
-                      paste0("saveRubric(", problem, ", lst)"),
                       "}, ignoreInit=TRUE)")))
   }
-  
-  # Save rubrics if any are dirty
-  eval(parse(text=c("observeEvent(",
-                    paste0("c(", paste0("rubric", 1:PROBLEM_COUNT, "Dirty()", collapse=", "),
-                           "), {"),
-                    "rnames = problemInputIds",
-                    "rubNew = vector('list', PROBLEM_COUNT)",
-                    "n = length(problemInputIds)",
-                    "for (problem in 1:PROBLEM_COUNT) {",
-                    "  rubNew[[problem]] = vector('list', n)",
-                    "  names(rubNew[[problem]]) = rnames",
-                    "  for (i in 1:n) {",
-                    "    widgNum = paste0(rnames[i], problem)",
-                    "    eval(parse(text=paste0('rubNew[[problem]][[rnames[i]]] = input$', widgNum)))",
-                    "  }",
-                    "}",
-                    "rubrics(rubNew)",
-                    "}, ignoreInit=TRUE)")
-  ))
-  
+  rm(problem)
   
   # Run one student's code
   observeEvent(input$runOne, {

@@ -4,7 +4,6 @@
 # Generate code like:
 #
 # tabPanel("P1",
-#          shinyjs::disabled(actionButton("submitProblemRubric##", "Save changes")),
 #          radioButtons("codefile", label="Choose a codefile for Problem 1:",
 #            choices="(None)"),
 #          textInput("inputReq", "Input requirements", ""),
@@ -21,7 +20,6 @@
 probPanelCodeOne = c(
   '  tabPanel("Problem ##",',
   '    h3("Problem ## Rubric"),',
-  '    shinyjs::disabled(actionButton("submitProblemRubric##", "Save changes")),',
   '    HTML("&nbsp"),',
   '    numericInput("initialPoints##", "Initial points for this problem", value=0),',
   '    p(strong("File naming rules:"), br(),',
@@ -90,9 +88,6 @@ probPanelCode = paste0("tabsetPanel(",
 temp = regexpr('"[a-zA-Z0-9_]*##"', probPanelCodeOne)
 problemInputIds = regmatches(probPanelCodeOne, temp)
 problemInputIds = substring(problemInputIds, 2, nchar(problemInputIds) - 3)
-temp = match("submitProblemRubric", problemInputIds)
-if (is.na(temp)) stop("no 'submitProblemRubric' in 'genProblemTabs.R'")
-problemInputIds = problemInputIds[-temp]
 
 
 # Find defaults from a string vector like 'probPanelCodeOne' above.
