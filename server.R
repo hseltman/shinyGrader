@@ -487,7 +487,13 @@ function(input, output, session) {
       cat(cf$reqMissing, sep="\n")
     }
   })
-  
+
+  for (problem in 1:PROBLEM_COUNT) {
+    eval(parse(text=c(paste0("observeEvent(input$saveRubric", problem, "AsDefault, {"),
+                      "browser()",
+                      "})")))
+  }
+  rm(problem)
   
   # output$codeFileList = renderPrint({
   #   cf = codingFiles()

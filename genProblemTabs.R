@@ -11,10 +11,18 @@
 # )
 #
 # from a string vector containing the text with "##" for the problem number.
-
+#
+# Also store the widget ids in 'problemInputIds'.  This is used throughout
+# the code so that a change to PROBLEM_COUNT will require no downstream
+# code changes.
+#
 # This precludes writing UI code for each problem separately, but
 # any changes to 'probPanelCodeOne' will require many other changes
-# to ShinyGrader.
+# to the ShinyGrader app.
+# Note that actionButton()s are allowed but not included in 'problemInputIds'.
+#
+# Current code required:
+#  actionButton("saveRubric##AsDefault", "Save as defaults for all new rubrics"))
 
 
 probPanelCodeOne = c(
@@ -70,7 +78,9 @@ probPanelCodeOne = c(
   '    fluidRow(column(4, numericInput("warnPtsLost##", "Points lost per warning", 0)),',
   '             column(3, numericInput("maxWarnPtsLost##", "Maximum warning points lost", 999))),',
   '    fluidRow(column(4, numericInput("errPtsLost##", "Points lost per error", 0)),',
-  '             column(3, numericInput("maxErrPtsLost##", "Maximum error points lost", 999))))'
+  '             column(3, numericInput("maxErrPtsLost##", "Maximum error points lost", 999))),',
+  '    HTML("&nbsp;"),',
+  '    actionButton("saveRubric##AsDefault", "Save as defaults for all new rubrics"))'
 )
 
 
