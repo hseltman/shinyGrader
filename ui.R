@@ -12,7 +12,7 @@ fluidPage(
   useShinyjs(), useShinyalert(),
   titlePanel("shinyGrader"),
   
-  tabsetPanel(
+  tabsetPanel(id="outerTabs",
     
     tabPanel(title="Assignment",
              HTML("&nbsp;"),

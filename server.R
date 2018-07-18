@@ -10,7 +10,11 @@ function(input, output, session) {
   
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
-  session$onSessionEnded(stopApp)
+  session$onSessionEnded(function() {
+    # Add code to check rubric#Dirty() and gcDirty()
+    # and save values if dirty.
+    stopApp()
+  })
   
   # Cheat for dualAlert() in "helpers.R"
   assign("shinyIsRunning", TRUE, env=.GlobalEnv)
@@ -125,7 +129,8 @@ function(input, output, session) {
     eval(parse(text=paste0("rubric", problem, "Dirty = reactiveVal(FALSE)")))
   }
 
-  
+  # Keep track of last tab
+  lastTab = reactiveVal("Assignment")
     
   ########################
   ### Create observers ###
@@ -317,6 +322,14 @@ function(input, output, session) {
   }, ignoreInit=TRUE)
 
 
+  observeEvent(input$outerTabs, {
+    this = input$outerTabs
+    last = lastTab()
+    browser()
+    
+    lastTab(this)
+  }, ignoreNULL=TRUE, ignoreInit=TRUE, priority=10)
+  
   # Handle change in courseId
   observeEvent(input$courseId, {
     cid = input$courseId
