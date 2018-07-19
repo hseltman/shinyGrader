@@ -70,3 +70,47 @@ staticCurrentFiles = findCurrentFiles(id=0,
 staticStudentEmail = staticGlobalConfig[["instructorEmail"]]
 if (staticStudentEmail == "") staticStudentEmail = "solution@fake.edu"
 staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles)
+
+
+# Initial values of rubrics
+# This is difficult and obtuse because we must avoid updating Problem rubric
+# widgets after initialization to prevent the date on the 'rubric#.RData' 
+# files from updating whenever the app is first run.
+# # Relies on the value of 'PROBLEM_COUNT', set in 'setup.R'.
+# HTML default values are always quoted and followed by ">"
+probPanelCode = lapply(1:PROBLEM_COUNT,
+                      function(prob) {
+                        txt = probPanelCodeOne
+                        N = length(txt)
+                        for (ii in 1:length(rubricDefaults)) {
+                          id = names(rubricDefaults)[ii]
+                          defaultVal = staticRubrics[[prob]][[id]]
+                          if (is.null(defaultVal)) {
+                            warning("missing default: ", id)
+                            next
+                          }
+                          if (is.character(defaultVal))
+                            defaultVal = paste0('"', defaultVal, '"')
+                          
+                          line = grep(id, txt)
+                          if (length(line) != 1) {
+                            stop("bad construction of 'probPanelCodeOne'")
+                          }
+                          
+                          #browser()
+                          hit = grep("value=", txt[line:min(line+4, N)])
+                          if (length(hit) == 0) {
+                            warning("problem finding 'value=' for ", id)
+                            next
+                          }
+                          line = line - 1 + hit[1]  # first hit
+                          txt[line] = gsub("(.*value=)(.*?)([)])(.*)",
+                                           paste0("\\1", defaultVal, ")\\4"), txt[line])
+                        }
+                        txt = gsub("##", paste(prob), txt, fixed=TRUE)
+                        return(paste(txt, collapse="\n"))
+                       })
+probPanelCode = paste0("tabsetPanel(",
+                       paste(probPanelCode, collapse=",\n"), "\n)")
+
+
