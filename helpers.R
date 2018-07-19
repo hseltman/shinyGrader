@@ -271,7 +271,7 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
 getRoster = function(rosterFileName, instructorEmail="") {
   # Fake instructor email
   fake = FAKE_INSTRUCTOR_ROSTER
-  fake[["Email"]] = instructorEmail
+  if (instructorEmail!="") fake[["Email"]] = instructorEmail
   
   #if (is.null(rosterFileName) || rosterFileName == "") {
   if (rosterFileName == "") {
@@ -973,32 +973,34 @@ setupSandbox = function(studentEmail, currentFiles) {
   sandbox = file.path(studentEmail, thisDir)
   
   # Copy files to sandbox
-  allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
-  inTime = file.info(file.path(allDf$directory, allDf$inName))$mtime
-  outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$mtime
-  for (row in 1:nrow(allDf)) {
-    this = allDf[row, ]
-    outDir = file.path(sandbox, this$directory)
-    copy = FALSE
-    if (is.na(outTime[row])) {
-      copy = TRUE
-      if (this$directory != "." && !dir.exists(outDir)) {
-        if (!dir.create(file.path(outDir))) {
-          dualAlert("Sandbox error", paste("Cannot create", outDir))
+  if (!is.null(currentFiles)) {
+    allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
+    inTime = file.info(file.path(allDf$directory, allDf$inName))$mtime
+    outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$mtime
+    for (row in 1:nrow(allDf)) {
+      this = allDf[row, ]
+      outDir = file.path(sandbox, this$directory)
+      copy = FALSE
+      if (is.na(outTime[row])) {
+        copy = TRUE
+        if (this$directory != "." && !dir.exists(outDir)) {
+          if (!dir.create(file.path(outDir))) {
+            dualAlert("Sandbox error", paste("Cannot create", outDir))
+            return(NULL)
+          }
+        }
+      } else {
+        if (inTime[row] > outTime[row])
+          copy = TRUE
+      }
+      if (copy) {
+        from = file.path(this$directory, this$inName)
+        if (!file.copy(from, file.path(outDir, this$outName),
+                       overwrite=TRUE, copy.date=TRUE)) {
+          dualAlert("Sandbox error", 
+                    paste("Cannot copy", from, "to", outDir))
           return(NULL)
         }
-      }
-    } else {
-      if (inTime[row] > outTime[row])
-        copy = TRUE
-    }
-    if (copy) {
-      from = file.path(this$directory, this$inName)
-      if (!file.copy(from, file.path(outDir, this$outName),
-                     overwrite=TRUE, copy.date=TRUE)) {
-        dualAlert("Sandbox error", 
-                  paste("Cannot copy", from, "to", outDir))
-        return(NULL)
       }
     }
   }
@@ -1120,6 +1122,10 @@ checkCode = function(path, cf, rubric) {
 
   allSectionNames = unique(c(names(inputReq), names(inputAnath)))
   allCodeNames = c(runName, cf$reqDf$outName[cf$reqDf$canvasFlag])
+  if (length(cf$reqMissing) > 0) {
+    cleanNames = gsub("(.*)([{]{2}.+[}]{2})", "\\1", cf$reqMissing)
+    allCodeNames = c(allCodeNames, cleanNames)
+  }
   secNotInCode = allSectionNames %in% allCodeNames == FALSE
   if (any(secNotInCode)) {
     badSecs = allSectionNames[secNotInCode]

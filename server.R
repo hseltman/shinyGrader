@@ -14,42 +14,43 @@ function(input, output, session) {
     # Check rubric#Dirty() and gcDirty() and save values if dirty.
     for (prob in 1:PROBLEM_COUNT) {
       if (eval(parse(text=paste0("isolate(rubric", prob, "Dirty())")))) {
-        updateRubric(prob)
+        rubNow = rubricToList(prob)
+        saveRubric(prob, rubNow)
+        #updateRubric(prob)
       }
     }
     stopApp()
   })
   
-  # Store rubric data for any problem in its save() file.
-  # Use isolate() so that this can also be called from the session$onSessionEnded()
-  # context.
-  updateRubric = function(prob) {
+  # Convert UI values for one problem rubric to a list
+  rubricToList = function(prob) {
     n = length(problemInputIds)
     lst = vector('list', n)
     names(lst) = problemInputIds
     for (id in problemInputIds) {
       eval(parse(text=paste0("lst[['", id, "']] = isolate(input[['", id, prob, "']])")))
     }
-    saveRubric(prob, lst)
+    return(lst)
   }
   
   # Cheat for dualAlert() in "helpers.R"
   assign("shinyIsRunning", TRUE, env=.GlobalEnv)
+  
   
   ### Setup for current directory (things that will change if ###
   ### the user changes directories).                         ###
   
   
   # Create initial status object
-  noTime = numeric(0)
-  class(noTime) = "POSIXct"
-  status = data.frame(student=I(character(0)),
-                      problem=integer(0),
-                      lastRun=noTime,
-                      newestFile=noTime,
-                      configTime=noTime,
-                      status=integer(0))
-  
+  # noTime = numeric(0)
+  # class(noTime) = "POSIXct"
+  # status = data.frame(student=I(character(0)),
+  #                     problem=integer(0),
+  #                     lastRun=noTime,
+  #                     newestFile=noTime,
+  #                     configTime=noTime,
+  #                     status=integer(0))
+  # 
   ###############################
   ### Complete User Interface ###
   ###############################
@@ -128,6 +129,9 @@ function(input, output, session) {
 
   # Files for current problem
   currentFiles = reactiveVal(staticCurrentFiles)
+  
+  # Path for current student
+  thisPath = reactiveVal(staticThisPath)
     
   # Store coding files and allow observers to know when it changes
   # codingFiles = reactive({
@@ -218,8 +222,8 @@ function(input, output, session) {
       updateSelectInput(session, "selectStudent", 
                         label=paste(length(st) - 1, "Students (Canvas name; email)"),
                         choices=st, selected=st[1])
-      shinyjs::enable("selectStudent")
-      shinyjs::enable("runCode")
+      #shinyjs::enable("selectStudent")
+      #shinyjs::enable("runCode")
     # }
   })
   
@@ -317,31 +321,66 @@ function(input, output, session) {
     }
   }, ignoreInit=TRUE)
   
+  observeEvent(input$pause, browser())
   
-  observeEvent(c(roster$serialNum, input$selectStudent, input$currentProblem,
-                 rubrics(), allFiles()), {
+  # Note allFiles()->rubrics(), roster$serialNum->input$selectStudent
+  observeEvent(c(input$selectStudent, input$currentProblem, rubrics()), {
     rubNow = rubrics()
-    id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-    if (is.null(id) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+    if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
+      thisPath(NULL)
+      shinyjs::disable("analyzeCode")
+      shinyjs::disable("runCode")
     } else {
       prob = getCurrentProblem(input$currentProblem)
-      currentFiles(findCurrentFiles(id, allFiles(), rubNow[[prob]]))
+      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+      cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+      currentFiles(cf)
+      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+      studentEmail = studentInfo["email"]
+      thisPath(setupSandbox(studentEmail, cf))
+      if (!is.null(cf$runDf) || !is.null(cf$reqDf) || !is.null(cf$optDf)) {
+        shinyjs::enable("analyzeCode")
+      } else {
+        shinyjs::disable("analyzeCode")
+      }
+      if (length(cf$runMissing) == 0) {
+        shinyjs::enable("runCode")
+      } else {
+        shinyjs::disable("runCode")
+      }
     }
   }, ignoreInit=TRUE)
 
+  
+  # Task to be done when tabs are selected/deselected
   # Assure that when user moves away from the problem tabs, any dirty
   # rubrics are saved.
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
     if (last == "Problems") {
-      for (prob in 1:PROBLEM_COUNT) {
-        if (eval(parse(text=paste0("rubric", prob, "Dirty()")))) {
-          updateRubric(prob)
+      isDirty = sapply(1:PROBLEM_COUNT,
+                       function(p) eval(parse(text=paste0("rubric", p, "Dirty()"))))
+      if (any(isDirty)) {
+        rubNow = rubrics()
+        for (prob in which(isDirty)) {
+          rubNow[[prob]] = rubricToList(prob)
+        }
+        rubrics(rubNow)
+
+        for (prob in which(isDirty)) {
+          saveRubric(prob, rubNow[[prob]])
           eval(parse(text=paste0("rubric", prob, "Dirty(FALSE)")))
         }
-      }
+      } # end if any(isDirty)
+    } # end if leaving the Problems tab
+    
+    if (this == "Grading") {
+      cf = currentFiles()
+      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+      studentEmail = studentInfo["email"]
+      thisPath(setupSandbox(studentEmail, cf))
     }
     
     lastTab(this)
@@ -355,9 +394,23 @@ function(input, output, session) {
     rosterFileName(rname)
   }, ignoreInit=TRUE)
   
-  # Construct observers for inputs related to global configuration
-  observeEvent(c(input$assignmentName, input$instructorEmail), {
+  # Construct observer for assignmentName
+  observeEvent(input$assignmentName, {
     gcDirty(TRUE)
+  }, ignoreInit=TRUE)
+
+  # Construct observer for instructorEmail
+  observeEvent(input$instructorEmail, {
+    gcDirty(TRUE)
+    rost = roster$roster
+    email = trimws(input$instructorEmail)
+    if (email == "") {
+      rost[1, "Email"] = "solution@fake.edu"
+    } else {
+      rost[1, "Email"] = email
+    }
+    roster$serialNum = roster$serialNum + 1
+    roster$roster = rost
   }, ignoreInit=TRUE)
   
   # Update global configuration if values change
@@ -400,26 +453,31 @@ function(input, output, session) {
   rm(problem)
   
   # Run one student's code
+  observeEvent(input$analyzeCode, {
+    req(thisPath(), currentFiles())
+    path = thisPath()
+    cf = currentFiles()
+    prob = getCurrentProblem(input$currentProblem)
+    rubric = rubrics()[[prob]]
+    cc = checkCode(path, cf, rubric)
+    print(cc)
+  }, ignoreInit=TRUE)
+    
+  # Run one student's code
   observeEvent(input$runCode, {
-    req(currentFiles(), roster$roster)
+    req(thisPath(), currentFiles(), roster$roster)
+    path = thisPath()
     cf = currentFiles()
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
     studentEmail = studentInfo["email"]
-    path = setupSandbox(studentEmail, cf)
-    if (!is.null(path)) {
-      prob = getCurrentProblem(input$currentProblem)
-      rubric = rubrics()[[prob]]
-      cc = checkCode(path, cf, rubric)
-      print(cc)
-      
-      
-      if (length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
-        if (runCode(studentEmail, path, cf$runDf$outName)) {
-      
-        }
-      } 
+    prob = getCurrentProblem(input$currentProblem)
+    rubric = rubrics()[[prob]]
+    if (length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
+      if (runCode(studentEmail, path, cf$runDf$outName)) {
+        print(file.info(file.path(path, paste0(cf$runDf$outName, "out"))))
+    }
     } # end if path not null (setup succeeded)
-  })
+  }, ignoreInit=TRUE)
   
 
     
@@ -439,7 +497,7 @@ function(input, output, session) {
   
 
   output$filesForOne = renderPrint({
-    req(currentFiles())
+    validate(need(currentFiles(), "Rubric does not have a run file"))
     cf = currentFiles()
     
     runDf = cf$runDf
@@ -494,12 +552,6 @@ function(input, output, session) {
                       "})")))
   }
   rm(problem)
-  
-  # output$codeFileList = renderPrint({
-  #   cf = codingFiles()
-  #   validate(need(cf), "No coding files in current folder")
-  #   cat(paste(cf, collapse=", "))n
-  # })
   
   
 } # end server function

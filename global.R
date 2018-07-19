@@ -65,3 +65,8 @@ staticCurrentFiles = findCurrentFiles(id=0,
                                       allFiles=parseFileNames(list.files.only(), 
                                                               staticCanvasRE),
                                       rubric=staticRubrics[[1]])
+
+
+staticStudentEmail = staticGlobalConfig[["instructorEmail"]]
+if (staticStudentEmail == "") staticStudentEmail = "solution@fake.edu"
+staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles)

@@ -82,7 +82,7 @@ CANVAS_ROSTER_NAMES = list(
 # Names must match CANVAS_ROSTER_NAMES plus 'CanvasName'
 FAKE_INSTRUCTOR_ROSTER = data.frame(ID=0,
                                     Name = I("Instructor"),
-                                    Email = I(""),
+                                    Email = I("solution@fake.edu"),
                                     CanvasName = I("solution"))
 attr(FAKE_INSTRUCTOR_ROSTER, "file") = file.path(getwd(), "fakeRoster")
 
