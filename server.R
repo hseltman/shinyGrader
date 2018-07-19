@@ -16,9 +16,24 @@ function(input, output, session) {
       if (eval(parse(text=paste0("isolate(rubric", prob, "Dirty())")))) {
         rubNow = rubricToList(prob)
         saveRubric(prob, rubNow)
-        #updateRubric(prob)
       }
     }
+    if (isolate(gcDirty())) {
+      widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
+      names(widgetValues) = names(GLOBAL_CONFIG_IDS)
+      gc = isolate(globalConfig())
+      for (w in names(widgetValues)) {
+        if (w == "rosterDirectory") {
+          widgetValues[[w]] = gc[[w]]
+        } else {
+          widgetValues[[w]] = trimws(isolate(input[[w]]))
+        }
+      }
+      if (!isTRUE(all.equal(gc[names(widgetValues)], widgetValues))) {
+        globalConfig(updateGlobalConfig(gc, widgetValues))
+      }
+    }
+    
     stopApp()
   })
   
@@ -303,7 +318,7 @@ function(input, output, session) {
     
     # Update activeProblems
     activeProblems(which(sapply(rubNow, isProblemActive)))
-  })
+  }, ignoreInit=TRUE)
 
   # Update input$currentProblem based on activeProblems()
   observeEvent(activeProblems(), {
@@ -321,7 +336,7 @@ function(input, output, session) {
     }
   }, ignoreInit=TRUE)
   
-  observeEvent(input$pause, browser())
+  observeEvent(input$debug, browser())
   
   # Note allFiles()->rubrics(), roster$serialNum->input$selectStudent
   observeEvent(c(input$selectStudent, input$currentProblem, rubrics()), {
@@ -359,6 +374,8 @@ function(input, output, session) {
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
+    studentEmail = selectStudentInfo(input$selectStudent, roster$roster)["email"]
+    
     if (last == "Problems") {
       isDirty = sapply(1:PROBLEM_COUNT,
                        function(p) eval(parse(text=paste0("rubric", p, "Dirty()"))))
@@ -374,12 +391,42 @@ function(input, output, session) {
           eval(parse(text=paste0("rubric", prob, "Dirty(FALSE)")))
         }
       } # end if any(isDirty)
-    } # end if leaving the Problems tab
+    } else if (last == "Assignment") { # end if leaving the Problems tab
+      if (gcDirty()) {
+        widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
+        names(widgetValues) = names(GLOBAL_CONFIG_IDS)
+        gc = globalConfig()
+        for (w in names(widgetValues)) {
+          if (w == "rosterDirectory") {
+            widgetValues[[w]] = gc[[w]]
+          } else {
+            widgetValues[[w]] = trimws(input[[w]])
+          }
+        }
+        if (!isTRUE(all.equal(gc[names(widgetValues)], widgetValues))) {
+          globalConfig(updateGlobalConfig(gc, widgetValues))
+        }
+        
+        # Handle change in instructorEmail (affects first line of roster)
+        rost = roster$roster
+        email = trimws(input$instructorEmail)
+        if (email != rost[1, "Email"]) {
+          if (email == "") {
+            rost[1, "Email"] = "solution@fake.edu"
+          } else {
+            rost[1, "Email"] = email
+          }
+          studentEmail = rost[1, "Email"]
+          roster$serialNum = roster$serialNum + 1
+          roster$roster = rost
+        }
+        
+        gcDirty(FALSE)
+      }
+    }
     
     if (this == "Grading") {
       cf = currentFiles()
-      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-      studentEmail = studentInfo["email"]
       thisPath(setupSandbox(studentEmail, cf))
     }
     
@@ -402,35 +449,6 @@ function(input, output, session) {
   # Construct observer for instructorEmail
   observeEvent(input$instructorEmail, {
     gcDirty(TRUE)
-    rost = roster$roster
-    email = trimws(input$instructorEmail)
-    if (email == "") {
-      rost[1, "Email"] = "solution@fake.edu"
-    } else {
-      rost[1, "Email"] = email
-    }
-    roster$serialNum = roster$serialNum + 1
-    roster$roster = rost
-  }, ignoreInit=TRUE)
-  
-  # Update global configuration if values change
-  observeEvent(gcDirty(), {
-    if (gcDirty()) {
-      widgetValues = vector("list", length(GLOBAL_CONFIG_IDS))
-      names(widgetValues) = names(GLOBAL_CONFIG_IDS)
-      gc = globalConfig()
-      for (w in names(widgetValues)) {
-        if (w == "rosterDirectory") {
-          widgetValues[[w]] = gc[[w]]
-        } else {
-          widgetValues[[w]] = trimws(input[[w]])
-        }
-      }
-      if (!isTRUE(all.equal(gc[names(widgetValues)], widgetValues))) {
-        globalConfig(updateGlobalConfig(gc, widgetValues))
-      }
-      gcDirty(FALSE)
-    }
   }, ignoreInit=TRUE)
   
   # Construct observer for all inputs in each problem configuration tab

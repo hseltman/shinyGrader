@@ -1144,6 +1144,9 @@ checkCode = function(path, cf, rubric) {
   fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
   both = c(inputReq, inputAnath)
   # Get a list of data.frames of specification results, one per combo of file and Req vs. Anath
+  if (all(sapply(both, function(x) length(x)==0))) {
+    return(NULL)
+  }
   codeProblems = lapply(seq(along.with=both), 
     function(index) {
       file = names(both)[index]
@@ -1173,6 +1176,12 @@ checkCode = function(path, cf, rubric) {
 
 # test specification for a text
 testSpecs = function(specs, txt) {
+  
+  # if (length(specs) == 0) {
+  #   return(setNames(data.frame(matrix(ncol=6, nrow=0)),
+  #                   c("pts", "msg", "pattern", "fixed", "found", "badRE")))
+  # }
+  
   rslt = lapply(specs,
     function(spec) {
       pspec = parseSpec(spec)
@@ -1198,6 +1207,7 @@ testSpecs = function(specs, txt) {
       return(cbind(pspec, found, badRE))
     }
   )
+  
   return(do.call(rbind, rslt))
 }
 
