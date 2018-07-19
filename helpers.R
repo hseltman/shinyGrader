@@ -1160,7 +1160,10 @@ checkCode = function(path, cf, rubric) {
         fileFound = TRUE
       }
       dtf = testSpecs(specs, txt)
-      return(cbind(file=file, dtf, anathema=anathema))
+      
+      if (!is.null(dtf)) dtf = cbind(file=file, dtf, anathema=anathema)
+      
+      return(dtf)
     }
   )
   
