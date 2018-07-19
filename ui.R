@@ -60,10 +60,10 @@ fluidPage(
                                               "0 Students (Canvas name; email)",
                                               "Instructor (solution;)", width="100%"))),
                column(7, verbatimTextOutput("filesForOne"))),
-      disabled(actionButton("runOne", "Run one student")),
-      p("Grade all"),
-      p("Grading output")
-    ), # end "Grading" tabPanel
+      fluidRow(column(2, disabled(actionButton("analyzeCode", "Analyze code"))),
+               column(2, disabled(actionButton("runCode", "Run code"))),
+               column(2, disabled(actionButton("analyzeResults", "Analyse results"))))
+      ), # end "Grading" tabPanel
     
     tabPanel("Letters",
       p("Assemble letters"),

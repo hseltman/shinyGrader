@@ -213,13 +213,13 @@ function(input, output, session) {
     #   updateSelectInput(session, "selectStudent", label="0 Students (Canvas name; email)",
     #                     choices=st, selected="(none)")
     #   shinyjs::disable("selectStudent")
-    #   shinyjs::disable("runOne")
+    #   shinyjs::disable("runCode")
     # } else {
       updateSelectInput(session, "selectStudent", 
                         label=paste(length(st) - 1, "Students (Canvas name; email)"),
                         choices=st, selected=st[1])
       shinyjs::enable("selectStudent")
-      shinyjs::enable("runOne")
+      shinyjs::enable("runCode")
     # }
   })
   
@@ -400,7 +400,7 @@ function(input, output, session) {
   rm(problem)
   
   # Run one student's code
-  observeEvent(input$runOne, {
+  observeEvent(input$runCode, {
     req(currentFiles(), roster$roster)
     cf = currentFiles()
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
