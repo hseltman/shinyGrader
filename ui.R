@@ -44,7 +44,7 @@ fluidPage(
              textInput("instructorEmail", "Instructor Email",
                        value=staticGlobalConfig[["instructorEmail"]], width="100%"),
              p(HTML("&nbsp;")),
-             actionButton("pause", "pause"),
+             actionButton("debug", "debug"),
              HTML(paste("<small>&Dagger;: To change assignment folder,",
                         "select any file in the assignment folder.</small>"))
     ), # end "Assignment" tabPanel
