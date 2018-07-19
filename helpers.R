@@ -840,12 +840,22 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
   }
   
   # Get required and optional files
-  reqDf = lapply(reqFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
-  missReq = sapply(reqDf, is.null)
-  reqMissing = reqFiles[missReq]
-  reqDf = do.call(rbind, reqDf[!missReq])
-  optDf = lapply(optFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
-  optDf = do.call(rbind, optDf)
+  if (length(reqFiles) == 0) {
+    reqDf = NULL
+    missReq = NULL
+    reqMissing = character(0)
+  } else {
+    reqDf = lapply(reqFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
+    missReq = sapply(reqDf, is.null)
+    reqMissing = reqFiles[missReq]
+    reqDf = do.call(rbind, reqDf[!missReq])
+  }
+  if (length(optFiles) == 0) {
+    optDf = NULL
+  } else {
+    optDf = lapply(optFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
+    optDf = do.call(rbind, optDf)
+  }
   return(list(runDf=runDf,
               runMissing=runMissing,
               reqMissing=reqMissing,
