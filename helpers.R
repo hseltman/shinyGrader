@@ -977,7 +977,7 @@ setupSandbox = function(studentEmail, currentFiles) {
     allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
     inTime = file.info(file.path(allDf$directory, allDf$inName))$mtime
     outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$mtime
-    for (row in 1:nrow(allDf)) {
+    for (row in seq(along.with=nrow(allDf))) {
       this = allDf[row, ]
       outDir = file.path(sandbox, this$directory)
       copy = FALSE
