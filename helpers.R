@@ -1242,16 +1242,19 @@ runR = function(runFile) {
 
 # Run Rmd Code
 runRmd = function(runFile) {
+  dualAlert("Not implmented","Need to code runRmd()")
   return(FALSE)
 }
 
 # Run Python Code
 runPy = function(runFile) {
+  dualAlert("Not implmented","Need to code runPy()")
   return(FALSE)
 }
 
 # Run SAS Code
 runSas = function(runFile) {
+  dualAlert("Not implmented","Need to code runRSas()")
   return(FALSE)
 }
 
