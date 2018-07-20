@@ -21,6 +21,8 @@
 # to the ShinyGrader app.
 # Note that actionButton()s are allowed but not included in 'problemInputIds'.
 #
+# Important: "value=" must be supplied and must be last.
+#
 # Current code required:
 #  actionButton("saveRubric##AsDefault", "Save as defaults for all new rubrics"))
 
@@ -39,60 +41,58 @@ probPanelCodeOne = c(
   '      br(), "The run file may be .R, .Rmd, .sas, .py, or no extension for a script file.",',
   '      br(), "The run file may use .RRmd to indicate either .R or .Rmd is acceptable."),',
   '    HTML("&nbsp;"),',
-  '    textInput("runFile##", "File name of code to run", width="35%"),',
+  '    textInput("runFile##", "File name of code to run", width="35%", value=""),',
   '    textInput("reqFiles##",',
-  '              paste("Required files (semicolon separated)"), width="100%"),',
+  '              paste("Required files (semicolon separated)"), width="100%", value=""),',
   '    textInput("optFiles##",',
-  '              paste("Optional files (semicolon separated)"), width="100%"),',
+  '              paste("Optional files (semicolon separated)"), width="100%", value=""),',
   '    HTML("&nbsp"),',
   '    fluidRow(column(3, numericInput("runCaseViolPts##",',
   '                                    "Pts. lost for case violation", value=0, width="100%")),',
   '             column(9, textInput("runCaseViolText##", "Optional case violation text",',
-  '                                  width="100%"))),',
+  '                                  width="100%", value=""))),',
   '    fluidRow(column(3, numericInput("looseFileNamePts##",',
   '                                    "Pts. lost for using secondary matching",',
   '                                     value=0, width="100%")),',
   '             column(9, textInput("looseFileNameText##",',
-  '                                  "Optional secondary matching text", width="100%"))),',
+  '                                  "Optional secondary matching text", width="100%",',
+  '                                  value=""))),',
   '    HTML("&nbsp"),',
-  '    checkboxInput("doPdf##", "Attempt to make pdf"),',
+  '    checkboxInput("doPdf##", "Attempt to make pdf", value=FALSE),',
   '    HTML("&nbsp"),',
   '    p("Requirements and anathemas (anti-requirements) are interpreted as regular",',
   '      "expressions, unless quoted.  An optional initial {#} or {#: myComment} deducts",',
   '      "that many points for missing requirements or included anathemas.  (Negative",',
   '      "values can be used for bonus points)"),',
-  '    textAreaInput("inputReq##", "Input requirements" ,width="720px", rows=6),',
-  '    textAreaInput("inputAnath##", "Input anathemas", width="720px", rows=6),',
-  '    textAreaInput("outputReq##", "Output requirements", width="720px", rows=6),',
-  '    textAreaInput("outputAnath##", "Output anathemas", width="720px", rows=6),',
+  '    textAreaInput("inputReq##", "Input requirements" ,width="720px", rows=6, value=""),',
+  '    textAreaInput("inputAnath##", "Input anathemas", width="720px", rows=6, value=""),',
+  '    textAreaInput("outputReq##", "Output requirements", width="720px", rows=6, value=""),',
+  '    textAreaInput("outputAnath##", "Output anathemas", width="720px", rows=6, value=""),',
   '    textAreaInput("warnIgnore##", "Warning text to ignore",',
-  '                  width="720px", rows=4),',
+  '                  width="720px", rows=4, value=""),',
   '    textAreaInput("errIgnore##", "Error text to ignore",',
-  '                  width="720px", rows=4),',
+  '                  width="720px", rows=4, value=""),',
   '    HTML("&nbsp;"),',
   '    p("Enter numbers for the following:"),',
-  '    fluidRow(column(4, numericInput("minComments##", "Minimum number of comment lines", 0)),',
-  '             column(3, numericInput("commentPts##", "Point loss for below minimum", 0))),',
-  '    fluidRow(column(4, numericInput("minBlanks##", "Minimum number of blank lines", 0)),',
-  '             column(3, numericInput("blankPts##", "Point loss for below minimum", 0))),',
-  '    fluidRow(column(4, numericInput("warnPtsLost##", "Points lost per warning", 0)),',
-  '             column(3, numericInput("maxWarnPtsLost##", "Maximum warning points lost", 999))),',
-  '    fluidRow(column(4, numericInput("errPtsLost##", "Points lost per error", 0)),',
-  '             column(3, numericInput("maxErrPtsLost##", "Maximum error points lost", 999))),',
+  '    fluidRow(column(4, numericInput("minComments##", "Minimum number of comment lines", ',
+  '                                    value=0)),',
+  '             column(3, numericInput("commentPts##", "Point loss for below minimum", ',
+  '                                    value=0))),',
+  '    fluidRow(column(4, numericInput("minBlanks##", "Minimum number of blank lines", ,',
+  '                                    value=0)),',
+  '             column(3, numericInput("blankPts##", "Point loss for below minimum", ,',
+  '                                    value=0))),',
+  '    fluidRow(column(4, numericInput("warnPtsLost##", "Points lost per warning", value=0)),',
+  '             column(3, numericInput("maxWarnPtsLost##", "Maximum warning points lost", ',
+  '                                   value=999))),',
+  '    fluidRow(column(4, numericInput("errPtsLost##", "Points lost per error", value=0)),',
+  '             column(3, numericInput("maxErrPtsLost##", "Maximum error points lost", ',
+  '                                    value=999))),',
   '    HTML("&nbsp;"),',
   '    actionButton("saveRubric##AsDefault", "Save as defaults for all new rubrics"))'
 )
 
 
-# Relys on the value of 'PROBLEM_COUNT', set in 'setup.R'.
-probPanelCode = lapply(1:PROBLEM_COUNT,
-                       function(index) {
-                         txt = gsub("##", paste(index), probPanelCodeOne, fixed=TRUE)
-                         return(paste(txt, collapse="\n"))
-                       })
-
-probPanelCode = paste0("tabsetPanel(",
-                       paste(probPanelCode, collapse=",\n"), "\n)")
 
 # Extract inputIds for each problem into a list
 temp = regexpr('"[a-zA-Z0-9_]*##"', probPanelCodeOne)

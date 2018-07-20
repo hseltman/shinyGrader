@@ -44,6 +44,7 @@ fluidPage(
              textInput("instructorEmail", "Instructor Email",
                        value=staticGlobalConfig[["instructorEmail"]], width="100%"),
              p(HTML("&nbsp;")),
+             actionButton("debug", "debug"),
              HTML(paste("<small>&Dagger;: To change assignment folder,",
                         "select any file in the assignment folder.</small>"))
     ), # end "Assignment" tabPanel
@@ -56,14 +57,14 @@ fluidPage(
     tabPanel("Grading",
       radioButtons("currentProblem", "Problem to grade", choices=staticCurrentProblem,
                    inline=TRUE),
-      fluidRow(column(5, disabled(selectInput("selectStudent",
-                                              "0 Students (Canvas name; email)",
-                                              "Instructor (solution;)", width="100%"))),
+      fluidRow(column(5, selectInput("selectStudent",
+                                     "0 Students (Canvas name; email)",
+                                     "Instructor (solution;)", width="100%")),
                column(7, verbatimTextOutput("filesForOne"))),
-      disabled(actionButton("runOne", "Run one student")),
-      p("Grade all"),
-      p("Grading output")
-    ), # end "Grading" tabPanel
+      fluidRow(column(2, disabled(actionButton("analyzeCode", "Analyze code"))),
+               column(2, disabled(actionButton("runCode", "Run code"))),
+               column(2, disabled(actionButton("analyzeResults", "Analyse results"))))
+      ), # end "Grading" tabPanel
     
     tabPanel("Letters",
       p("Assemble letters"),
