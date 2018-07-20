@@ -1287,3 +1287,93 @@ runSas = function(runFile) {
   return(FALSE)
 }
 
+changeExtention = function(fname, ext) {
+  fname = gsub("(")
+}
+
+# Check results
+checkOutput = function(path, cf, rubric) {
+  browser()
+  outputReq = splitCodeRubric(rubric$outputReq)
+  outputAnath = splitCodeRubric(rubric$outputAnath)
+  if(length(cf$runMissing) == 0) {
+    ext = gsub("(.*)([.])(.*)", "\\3", cf$runDf$runName)
+    newExt = switch(tolower(ext),
+                    "r"="Rout",
+                    "rmd"="pdf",
+                    "sas"="lst",
+                    "py"="pyout",
+                    "nomatch")
+    if (newExt == "nomatch") stop("no match")
+    outName = changeExtension(cf$runDf$runName, newExt)
+    outNonCanvas = cf$runDf$canvasFlag == FALSE
+  } else {
+    ext = gsub("(.*)([.])(.*)", "\\3", cf$runMissing)
+    newExt = switch(tolower(ext),
+                    "r"="Rout",
+                    "rmd"="pdf",
+                    "sas"="lst",
+                    "py"="pyout",
+                    "nomatch")
+    if (newExt == "nomatch") stop("no match")
+    outName = changeExtension(cf$runMissing, newExt)
+    outNonCanvas = FALSE
+  }
+  m = match("runFile", names(outputReq))
+  if (!is.na(m)) {
+    if (outNonCanvas) {
+      dualAlert("Bad rubric",
+                "Rubric's output requirements cannot refer to a non-Canvas file")
+      outputReq['runFile'] = NULL
+    } else {
+      names(outputReq)[m] = outName
+    }
+  }
+  m = match("runFile", names(outputAnath))
+  if (!is.na(m)) {
+    if (outNonCanvas) {
+      dualAlert("Bad rubric",
+                "Rubric's code anathema cannot refer to a non-Canvas file")
+      outputAnath['runFile'] = NULL
+    } else {
+      names(outputAnath)[m] = outName
+    }
+  }
+  
+  nReq = length(outputReq)
+  nAnath = length(outputAnath)
+  fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
+  both = c(outputReq, outputAnath)
+  # Get a list of data.frames of specification results, one per combo of file and Req vs. Anath
+  if (all(sapply(both, function(x) length(x)==0))) {
+    return(NULL)
+  }
+  outputProblems = lapply(seq(along.with=both), 
+                          function(index) {
+                            file = names(both)[index]
+                            anathema = fromAnathema[index]
+                            specs = both[[index]]
+                            txt = try(suppressWarnings(readLines(file.path(path, file), warn=FALSE)), silent=TRUE)
+                            if (is(txt, "try-error")) {
+                              fileFound = FALSE
+                              txt = ""
+                            } else {
+                              fileFound = TRUE
+                            }
+                            dtf = testSpecs(specs, txt)
+                            
+                            if (!is.null(dtf)) dtf = cbind(file=file, dtf, anathema=anathema)
+                            
+                            return(dtf)
+                          }
+  )
+  
+  co = do.call(rbind, outputProblems)
+  co$mention = (oc$found == oc$anathema)  & !oc$badRE
+  co$dock = 0
+  co$dock[co$mention] = co$pts[co$mention]
+  
+  # Both save and return the final data.frame
+  save(co, file=file.path(path, "outputProblems.RData"))
+  return(co)
+}  # end checkOutput()

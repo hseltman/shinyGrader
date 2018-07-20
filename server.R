@@ -428,6 +428,7 @@ function(input, output, session) {
     if (this == "Grading") {
       cf = currentFiles()
       thisPath(setupSandbox(studentEmail, cf))
+      shinyjs::enable(input$analyzeOutput)
     }
     
     lastTab(this)
@@ -470,7 +471,7 @@ function(input, output, session) {
   }
   rm(problem)
   
-  # Run one student's code
+  # Check one student's code
   observeEvent(input$analyzeCode, {
     req(thisPath(), currentFiles())
     path = thisPath()
@@ -497,7 +498,18 @@ function(input, output, session) {
     } # end if path not null (setup succeeded)
   }, ignoreInit=TRUE)
   
-
+  # Check one student's output
+  observeEvent(input$analyzeOutput, {
+    req(thisPath(), currentFiles())
+    path = thisPath()
+    cf = currentFiles()
+    prob = getCurrentProblem(input$currentProblem)
+    rubric = rubrics()[[prob]]
+    co = checkOutput(path, cf, rubric)
+    print(co)
+  }, ignoreInit=TRUE)
+  
+  
     
   #########################
   ### Create renderings ###

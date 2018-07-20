@@ -63,7 +63,7 @@ fluidPage(
                column(7, verbatimTextOutput("filesForOne"))),
       fluidRow(column(2, disabled(actionButton("analyzeCode", "Analyze code"))),
                column(2, disabled(actionButton("runCode", "Run code"))),
-               column(2, disabled(actionButton("analyzeResults", "Analyse results"))))
+               column(2, disabled(actionButton("analyzeOutput", "Analyse output"))))
       ), # end "Grading" tabPanel
     
     tabPanel("Letters",
