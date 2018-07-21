@@ -89,8 +89,12 @@ probPanelCode = lapply(1:PROBLEM_COUNT,
                             warning("missing default: ", id)
                             next
                           }
-                          if (is.character(defaultVal))
+                          if (is.character(defaultVal)) {
+                            defaultVal = gsub('"', '\\\\\\\\"',
+                                              gsub("'", "\\\\\\\\'",
+                                                   defaultVal))
                             defaultVal = paste0('"', defaultVal, '"')
+                          }
                           
                           line = grep(id, txt)
                           if (length(line) != 1) {
@@ -110,6 +114,7 @@ probPanelCode = lapply(1:PROBLEM_COUNT,
                         txt = gsub("##", paste(prob), txt, fixed=TRUE)
                         return(paste(txt, collapse="\n"))
                        })
+
 probPanelCode = paste0("tabsetPanel(",
                        paste(probPanelCode, collapse=",\n"), "\n)")
 
