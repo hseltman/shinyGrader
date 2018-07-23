@@ -501,6 +501,7 @@ function(input, output, session) {
     prob = getCurrentProblem(input$currentProblem)
     rubric = rubrics()[[prob]]
     cc = checkCode(path, cf, rubric)
+    if (!is.null(cc)) shinyjs::disable("analyzeCode")
     print(cc)
   }, ignoreInit=TRUE)
     
@@ -513,11 +514,13 @@ function(input, output, session) {
     studentEmail = studentInfo["email"]
     prob = getCurrentProblem(input$currentProblem)
     rubric = rubrics()[[prob]]
-    if (length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
-      if (runCode(studentEmail, path, cf$runDf$outName)) {
+    #if (is.null(cf$reqMissing) && is.null(cf$runMissing)) {
+      if (runCode(path, cf$runDf$outName)) {
+        shinyjs::disable("runCode")
+        shinyjs::enable("analyzeOutput")
         print(file.info(file.path(path, changeExtension(cf$runDf$outName, "out"))))
-    }
-    } # end if path not null (setup succeeded)
+      }
+    #} # end if path not null (setup succeeded)
   }, ignoreInit=TRUE)
   
   # Check one student's output
@@ -528,6 +531,7 @@ function(input, output, session) {
     prob = getCurrentProblem(input$currentProblem)
     rubric = rubrics()[[prob]]
     co = checkOutput(path, cf, rubric)
+    if (!is.null(co)) shinyjs::disable("analyzeOutput")
     print(co)
   }, ignoreInit=TRUE)
   

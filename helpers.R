@@ -1047,7 +1047,7 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
 
 
 # Run a user's code
-runCode = function(studentEmail, path, runFile) {
+runCode = function(path, runFile) {
   # Move to sandbox
   wd = getwd()
   if (is(try(setwd(path), silent=TRUE), "try-error")) {
