@@ -1262,7 +1262,8 @@ parseSpec = function(spec) {
 
 # Run R Code
 runR = function(runFile) {
-  args = paste("CMD BATCH --no-restore --no-save --quiet", runFile)
+  args = paste("CMD BATCH --no-restore --no-save --quiet", runFile,
+               changeExtension(runFile, "out"))
   rtn = try(system2("R", args, invisible=FALSE), silent=TRUE)
   if (is(rtn, "try-error")) {
     return(FALSE)
@@ -1297,26 +1298,10 @@ checkOutput = function(path, cf, rubric) {
   outputReq = splitCodeRubric(rubric$outputReq)
   outputAnath = splitCodeRubric(rubric$outputAnath)
   if(length(cf$runMissing) == 0) {
-    ext = gsub("(.*)([.])(.*)", "\\3", cf$runDf$outName)
-    newExt = switch(tolower(ext),
-                    "r"="Rout",
-                    "rmd"="pdf",
-                    "sas"="lst",
-                    "py"="pyout",
-                    "nomatch")
-    if (newExt == "nomatch") stop("no match")
-    outName = changeExtension(cf$runDf$outName, newExt)
+    outName = changeExtension(cf$runDf$outName, "out")
     outNonCanvas = cf$runDf$canvasFlag == FALSE
   } else {
-    ext = gsub("(.*)([.])(.*)", "\\3", cf$runMissing)
-    newExt = switch(tolower(ext),
-                    "r"="Rout",
-                    "rmd"="pdf",
-                    "sas"="lst",
-                    "py"="pyout",
-                    "nomatch")
-    if (newExt == "nomatch") stop("no match")
-    outName = changeExtension(cf$runMissing, newExt)
+    outName = changeExtension(cf$runMissing, "out")
     outNonCanvas = FALSE
   }
   m = match("runFile", names(outputReq))

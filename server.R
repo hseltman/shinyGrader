@@ -532,7 +532,7 @@ function(input, output, session) {
     rubric = rubrics()[[prob]]
     if (length(cf$reqMissingReq) == 0 || is.null(cf$runMissing)) {
       if (runCode(studentEmail, path, cf$runDf$outName)) {
-        print(file.info(file.path(path, paste0(cf$runDf$outName, "out"))))
+        print(file.info(file.path(path, changeExtension(cf$runDf$outName, "out"))))
     }
     } # end if path not null (setup succeeded)
   }, ignoreInit=TRUE)
