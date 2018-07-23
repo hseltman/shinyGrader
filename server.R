@@ -361,6 +361,7 @@ function(input, output, session) {
       thisPath(NULL)
       shinyjs::disable("analyzeCode")
       shinyjs::disable("runCode")
+      shinyjs::disable("analyzeOutput")
     } else {
       prob = getCurrentProblem(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
@@ -368,18 +369,13 @@ function(input, output, session) {
       currentFiles(cf)
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
       studentEmail = studentInfo["email"]
-      thisPath(setupSandbox(studentEmail, cf))
-      if (!is.null(cf$runDf) || !is.null(cf$reqDf) || !is.null(cf$optDf)) {
-        shinyjs::enable("analyzeCode")
-      } else {
-        shinyjs::disable("analyzeCode")
-      }
-      if (length(cf$runMissing) == 0) {
-        shinyjs::enable("runCode")
-      } else {
-        shinyjs::disable("runCode")
-      }
-      shinyjs::enable("analyzeOutput")  # FIX THIS!!!!
+      path = setupSandbox(studentEmail, cf)
+      thisPath(path)
+      checks = checkEnables(path, cf, prob)
+      # Note: 'condition' cannot have names
+      shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
+      shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
+      shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
     }
   }, ignoreInit=TRUE)
 
@@ -443,29 +439,25 @@ function(input, output, session) {
     
     if (this == "Grading") {
       rubNow = rubrics()
+      prob = getCurrentProblem(input$currentProblem)
+      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+      cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
+        shinyjs::disable("analyzeOutput")
       } else {
-        prob = getCurrentProblem(input$currentProblem)
-        id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-        cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
         currentFiles(cf)
         studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
         studentEmail = studentInfo["email"]
-        thisPath(setupSandbox(studentEmail, cf))
-        if (!is.null(cf$runDf) || !is.null(cf$reqDf) || !is.null(cf$optDf)) {
-          shinyjs::enable("analyzeCode")
-        } else {
-          shinyjs::disable("analyzeCode")
-        }
-        if (length(cf$runMissing) == 0) {
-          shinyjs::enable("runCode")
-        } else {
-          shinyjs::disable("runCode")
-        }
-        shinyjs::enable("analyzeOutput")  # FIX THIS!!!
+        path = setupSandbox(studentEmail, cf)
+        thisPath(path)
+        checks = checkEnables(path, cf, prob)
+        # Note: 'condition' cannot have names
+        shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
+        shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
+        shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
       }
       thisPath(setupSandbox(studentEmail, cf))
     }

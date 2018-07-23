@@ -24,6 +24,7 @@
 #   testSpecs()
 #   parseSpec()
 #   runCode()
+#   checkEnables()
 
 # Convert a special kind of text file into a named list.
 #
@@ -817,7 +818,27 @@ matchFile = function(fs, studentFiles, otherFiles) {
 
 
 
-# File list for a student and a problem
+# Compute information about the files for the current
+# student and rubric (for the current problem).
+#
+# Input: 
+#   idNum: the student's Canvas id number (second field in Canvas filenames)
+#   allFiles: the allFiles() reactiveVal [see findCurrentFiles()]
+#   rubric: the element of the rubrics() reactiveVal for the current problem
+#
+# Output:
+#   runDf: a matchFile() type data.frame with a file.info()$mtime added
+#          corresponding to the runFile, or NULL if no runFile
+#   runMissing: NULL or the name of the missing runFile
+#   reqMissing: NULL or a matchFile() data.frame describing the missing
+#               required files
+#   reqDf: NULL or a matchFile() data.frame describing the available
+#          required files
+#   optDf: NULL or a matchFile() data.frame describing the available
+#          optional files
+#
+# This function adds modifyTime to the three data.frames
+#
 findCurrentFiles = function(idNum, allFiles, rubric) {
   if (rubric$runFile == "") return(NULL)
   studentFiles = allFiles$Canvas[allFiles$Canvas$studentIdNumber==idNum,]
@@ -838,6 +859,7 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
     runMissing = rubric$runFile
   } else {
     runMissing = NULL
+    runDf$modifyTime = file.info(runDf$inName)$mtime
   }
   
   # Get required and optional files
@@ -850,12 +872,16 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
     missReq = sapply(reqDf, is.null)
     reqMissing = reqFiles[missReq]
     reqDf = do.call(rbind, reqDf[!missReq])
+    reqDf$modifyTime = file.info(file.path(reqDf$directory, reqDf$inName))$mtime
   }
   if (length(optFiles) == 0) {
     optDf = NULL
   } else {
     optDf = lapply(optFiles, matchFile, studentFiles=studentFiles, otherFiles=otherFiles)
     optDf = do.call(rbind, optDf)
+    if (!is.null(optDf)) {
+      optDf$modifyTime = file.info(file.path(optDf$directory, optDf$inName))$mtime
+    }
   }
   return(list(runDf=runDf,
               runMissing=runMissing,
@@ -1362,3 +1388,60 @@ checkOutput = function(path, cf, rubric) {
   save(co, file=file.path(path, "outputProblems.RData"))
   return(co)
 }  # end checkOutput()
+
+
+# From a 'currentFiles' list, determine appropriateness of
+# enabling analyzeCode, runCode, and analyzeOutput.
+#
+checkEnables = function(path, cf, probNum) {
+  if(length(cf$runMissing) == 0) {
+    runName = cf$runDf$inName
+    outName = file.path(path, changeExtension(cf$runDf$outName, "out"))
+  } else {
+    runName = cf$runMissing
+    outName = file.path(path, changeExtension(runName, "out"))
+  }
+  rubricName = paste0("rubric", probNum, ".RData")
+  codeProbName = file.path(path, "codeProblems.RData")
+  outputProbName = file.path(path, "outputProblems.RData")
+  earlyDate = as.POSIXct("1/1/1", format="%m/%d/%Y")
+  
+  analyzeCode = runCode = analyzeOutput = FALSE
+  
+  rubricTime = ifelse(file.exists(rubricName),
+                      file.info(rubricName)$mtime,
+                      earlyDate)
+  hasRun = file.exists(runName)
+  runTime = ifelse(hasRun, cf$runDf$modifyTime, earlyDate)
+  hasUserCode = (hasRun && cf$runDf$canvasFlag) ||
+                (!is.null(cf$reqDf) && any(cf$reqDf$canvasFlag)) ||
+                (!is.null(cf$optDf) && any(cf$optDf$canvasFlag))
+  missingReq = length(cf$reqMissing) > 0
+  newestInput = max(runTime, cf$reqDf$modifyTime, cf$optDf$modifyTime)
+  codeProblemsTime = ifelse(file.exists(codeProbName),
+                            file.info(codeProbName)$mtime,
+                            earlyDate)
+  hasOutput = file.exists(outName)
+  outTime = ifelse(hasOutput, file.info(outName)$mtime, earlyDate)
+  outputProblemsTime = ifelse(file.exists(outputProbName),
+                              file.info(outputProbName)$mtime,
+                              earlyDate)
+  
+  analyzeCode = hasUserCode && 
+                (codeProblemsTime == earlyDate ||
+                 newestInput > codeProblemsTime ||
+                 rubricTime > codeProblemsTime)
+  
+  runCode = hasRun && !missingReq &&
+            (!hasOutput ||
+             outTime < newestInput ||
+             outTime < rubricTime)
+  
+  analyzeOutput = hasOutput && outTime >= runTime &&
+                  (outputProblemsTime < outTime ||
+                   outputProblemsTime < rubricTime)
+  
+  return(c(analyzeCode=analyzeCode,
+           runCode=runCode,
+           analyzeOutput=analyzeOutput))
+}
