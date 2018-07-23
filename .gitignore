@@ -42,6 +42,7 @@ shinyGrader.config
 *.Rdata
 solution_0_0_hw1.R
 solution_0_0_hw2.R
+goodethomas_11735_123456_hw1-1.R
 *.sas
 submissions.zip
 solution_0_0_hw3.R
