@@ -228,18 +228,9 @@ function(input, output, session) {
   
   observeEvent(students(), {
     st = students()
-    # if (length(st) == 1 && st == "(none)") {
-    #   updateSelectInput(session, "selectStudent", label="0 Students (Canvas name; email)",
-    #                     choices=st, selected="(none)")
-    #   shinyjs::disable("selectStudent")
-    #   shinyjs::disable("runCode")
-    # } else {
-      updateSelectInput(session, "selectStudent", 
-                        label=paste(length(st) - 1, "Students (Canvas name; email)"),
-                        choices=st, selected=st[1])
-      #shinyjs::enable("selectStudent")
-      #shinyjs::enable("runCode")
-    # }
+    updateSelectInput(session, "selectStudent", 
+                      label=paste(length(st) - 1, "Students (Canvas name; email)"),
+                      choices=st, selected=st[1])
   })
   
   
@@ -369,7 +360,7 @@ function(input, output, session) {
       currentFiles(cf)
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
       studentEmail = studentInfo["email"]
-      path = setupSandbox(studentEmail, cf)
+      path = setupSandbox(studentEmail, cf, prob)
       thisPath(path)
       checks = checkEnables(path, cf, prob)
       # Note: 'condition' cannot have names
@@ -442,16 +433,17 @@ function(input, output, session) {
       prob = getCurrentProblem(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
       cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+      studentEmail = studentInfo["email"]
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
+        thisPath(setupSandbox(studentEmail, cf, prob))
       } else {
         currentFiles(cf)
-        studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-        studentEmail = studentInfo["email"]
-        path = setupSandbox(studentEmail, cf)
+        path = setupSandbox(studentEmail, cf, prob)
         thisPath(path)
         checks = checkEnables(path, cf, prob)
         # Note: 'condition' cannot have names
@@ -459,7 +451,6 @@ function(input, output, session) {
         shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
         shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
       }
-      thisPath(setupSandbox(studentEmail, cf))
     }
     
     lastTab(this)

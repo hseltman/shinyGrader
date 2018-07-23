@@ -922,6 +922,7 @@ getCurrentProblem = function(probString) {
 # INPUT:
 #  studentEmail: students full email address
 #  currentFiles: result of calling findCurrentFiles()
+#  probNum: the current problem number
 #
 # OUTPUT: path to sandbox (or NULL if unsuccessful)
 #
@@ -929,7 +930,8 @@ getCurrentProblem = function(probString) {
 #
 # DETAILS:
 # A sandbox directory is created for each student using the LHS of their email.
-# Within this directory, each attempt is given a directory named "1", "2", etc.
+# Within this directory, each problem is in a folder labeled "problem#", and
+# each attempt is given a directory named "1", "2", etc.
 #
 # A new attempt is defined by at least one new student file in currentFiles.  This
 # works because newly submitted files on Canvas are given new names ("-1", "-2", etc.).
@@ -943,18 +945,27 @@ getCurrentProblem = function(probString) {
 # The save() version of the 'currentFiles' object is used to identify what files
 # define an attempt.  Do not erase "shinyGraderCF.RData" files!
 #
-setupSandbox = function(studentEmail, currentFiles) {
+setupSandbox = function(studentEmail, currentFiles, probNum) {
   studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
+  probName = paste0("problem", probNum)
 
   # Set up top student directory and 'lastDir'
   if (! dir.exists(studentEmail)) {
     if (!dir.create(studentEmail, showWarnings=FALSE)) {
-      dualAlert("Sandbox error", paste("Cannot create", studentEmail))
+      dualAlert("Sandbox error", paste("Cannot create folder", studentEmail))
+      return(NULL)
+    }
+  }
+  
+  probFolder = file.path(studentEmail, probName)
+  if (! dir.exists(probFolder)) {
+    if (!dir.create(probFolder, showWarnings=FALSE)) {
+      dualAlert("Sandbox error", paste("Cannot create folder", probFolder))
       return(NULL)
     }
     lastDir = 0  # most recently used attempt
   } else {
-    dirs = basename(list.dirs(studentEmail, recursive=FALSE))
+    dirs = basename(list.dirs(probFolder, recursive=FALSE))
     dirs = grep("^[1-9][0-9]?$", dirs, value=TRUE)
     if (length(dirs) == 0) {
       lastDir = 0      
@@ -965,10 +976,10 @@ setupSandbox = function(studentEmail, currentFiles) {
   
   # Determine if a new directory is needed
   useLastDir = FALSE
-  cfPath = file.path(studentEmail, lastDir, "shinyGraderCF.RData")
+  cfPath = file.path(probFolder, lastDir, "shinyGraderCF.RData")
   if (lastDir != 0 && !file.exists(cfPath)) {
     useLastDir = TRUE
-    save(currentFiles, file=file.path(studentEmail, lastDir, "shinyGraderCF.RData"))
+    save(currentFiles, file=file.path(probFolder, lastDir, "shinyGraderCF.RData"))
   }
   if (lastDir != 0 && file.exists(cfPath)) {
     thisCF = currentFiles
@@ -988,16 +999,16 @@ setupSandbox = function(studentEmail, currentFiles) {
   # Create new subdirectory if needed
   if (!useLastDir) {
     thisDir = lastDir + 1
-    dirPath = file.path(studentEmail, thisDir)
+    dirPath = file.path(probFolder, thisDir)
     if (!dir.create(dirPath, showWarnings=FALSE)) {
       dualAlert("Sandbox error", paste("Cannot create", dirPath))
       return(NULL)
     }
-    save(currentFiles, file=file.path(studentEmail, thisDir, "shinyGraderCF.RData"))
+    save(currentFiles, file=file.path(probFolder, thisDir, "shinyGraderCF.RData"))
   } else {
     thisDir = lastDir
   }
-  sandbox = file.path(studentEmail, thisDir)
+  sandbox = file.path(probFolder, thisDir)
   
   # Copy files to sandbox
   if (!is.null(currentFiles)) {

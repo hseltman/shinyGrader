@@ -69,15 +69,18 @@ staticCurrentFiles = findCurrentFiles(id=0,
 
 staticStudentEmail = staticGlobalConfig[["instructorEmail"]]
 if (staticStudentEmail == "") staticStudentEmail = "solution@fake.edu"
-staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles)
+staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles, 
+                              probNum = min(staticActiveProblems))
 
 
-# Initial values of rubrics
-# This is difficult and obtuse because we must avoid updating Problem rubric
+# Code to set initial values of rubric widgets.
+#
+# This is difficult and obtuse because we must avoid updating problem rubric
 # widgets after initialization to prevent the date on the 'rubric#.RData' 
 # files from updating whenever the app is first run.
-# # Relies on the value of 'PROBLEM_COUNT', set in 'setup.R'.
-# HTML default values are always quoted and followed by ">"
+#
+# This relies on the value of 'PROBLEM_COUNT', set in 'setup.R'.
+#
 probPanelCode = lapply(1:PROBLEM_COUNT,
                       function(prob) {
                         txt = probPanelCodeOne
