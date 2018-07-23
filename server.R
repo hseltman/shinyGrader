@@ -337,9 +337,24 @@ function(input, output, session) {
   }, ignoreInit=TRUE)
   
   observeEvent(input$debug, browser())
+
   
-  # Note allFiles()->rubrics(), roster$serialNum->input$selectStudent
-  observeEvent(c(input$selectStudent, input$currentProblem, rubrics()), {
+  # Note allFiles()->rubrics()
+  observeEvent(rubrics(), {
+    rubNow = rubrics()
+    if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+      currentFiles(NULL)
+    } else {
+      prob = getCurrentProblem(input$currentProblem)
+      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+      cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+      currentFiles(cf)
+    }
+  }, ignoreInit=TRUE)
+  
+    
+  # Note roster$serialNum->input$selectStudent
+  observeEvent(c(input$selectStudent, input$currentProblem), {
     rubNow = rubrics()
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
@@ -364,10 +379,11 @@ function(input, output, session) {
       } else {
         shinyjs::disable("runCode")
       }
+      shinyjs::enable("analyzeOutput")  # FIX THIS!!!!
     }
   }, ignoreInit=TRUE)
 
-  
+
   # Task to be done when tabs are selected/deselected
   # Assure that when user moves away from the problem tabs, any dirty
   # rubrics are saved.
@@ -426,9 +442,32 @@ function(input, output, session) {
     }
     
     if (this == "Grading") {
-      cf = currentFiles()
+      rubNow = rubrics()
+      if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+        currentFiles(NULL)
+        shinyjs::disable("analyzeCode")
+        shinyjs::disable("runCode")
+      } else {
+        prob = getCurrentProblem(input$currentProblem)
+        id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+        cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+        currentFiles(cf)
+        studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+        studentEmail = studentInfo["email"]
+        thisPath(setupSandbox(studentEmail, cf))
+        if (!is.null(cf$runDf) || !is.null(cf$reqDf) || !is.null(cf$optDf)) {
+          shinyjs::enable("analyzeCode")
+        } else {
+          shinyjs::disable("analyzeCode")
+        }
+        if (length(cf$runMissing) == 0) {
+          shinyjs::enable("runCode")
+        } else {
+          shinyjs::disable("runCode")
+        }
+        shinyjs::enable("analyzeOutput")  # FIX THIS!!!
+      }
       thisPath(setupSandbox(studentEmail, cf))
-      shinyjs::enable(input$analyzeOutput)
     }
     
     lastTab(this)

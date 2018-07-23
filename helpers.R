@@ -644,6 +644,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
   ############################################################
   if (!Canvas) {
     directory = dirname(fs)
+    if (directory != ".") otherFiles = list.files.only(directory)
     fs = basename(fs)
     if (fs != "") { # Try direct match
       indices = grep(fs, otherFiles) # length is always 0 or 1
@@ -977,7 +978,7 @@ setupSandbox = function(studentEmail, currentFiles) {
     allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
     inTime = file.info(file.path(allDf$directory, allDf$inName))$mtime
     outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$mtime
-    for (row in seq(along.with=nrow(allDf))) {
+    for (row in seq(along.with=allDf$outName)) {
       this = allDf[row, ]
       outDir = file.path(sandbox, this$directory)
       copy = FALSE
@@ -1287,17 +1288,16 @@ runSas = function(runFile) {
   return(FALSE)
 }
 
-changeExtention = function(fname, ext) {
-  fname = gsub("(")
+changeExtension = function(fname, ext) {
+  return(gsub("(.*[.])(.*)", paste0("\\1", ext), fname))
 }
 
 # Check results
 checkOutput = function(path, cf, rubric) {
-  browser()
   outputReq = splitCodeRubric(rubric$outputReq)
   outputAnath = splitCodeRubric(rubric$outputAnath)
   if(length(cf$runMissing) == 0) {
-    ext = gsub("(.*)([.])(.*)", "\\3", cf$runDf$runName)
+    ext = gsub("(.*)([.])(.*)", "\\3", cf$runDf$outName)
     newExt = switch(tolower(ext),
                     "r"="Rout",
                     "rmd"="pdf",
@@ -1305,7 +1305,7 @@ checkOutput = function(path, cf, rubric) {
                     "py"="pyout",
                     "nomatch")
     if (newExt == "nomatch") stop("no match")
-    outName = changeExtension(cf$runDf$runName, newExt)
+    outName = changeExtension(cf$runDf$outName, newExt)
     outNonCanvas = cf$runDf$canvasFlag == FALSE
   } else {
     ext = gsub("(.*)([.])(.*)", "\\3", cf$runMissing)
@@ -1369,7 +1369,7 @@ checkOutput = function(path, cf, rubric) {
   )
   
   co = do.call(rbind, outputProblems)
-  co$mention = (oc$found == oc$anathema)  & !oc$badRE
+  co$mention = (co$found == co$anathema)  & !co$badRE
   co$dock = 0
   co$dock[co$mention] = co$pts[co$mention]
   
