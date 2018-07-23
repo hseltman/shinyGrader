@@ -1316,9 +1316,14 @@ runRmd = function(runFile) {
 
 # Run Python Code
 runPy = function(runFile) {
-  dualAlert("Not implmented","Need to code runPy()")
-  return(FALSE)
+  rtn = try(system2("python", stdin=runFile, stdout=changeExtension(runFile, "out"),
+                    stderr=changeExtension(runFile, "err"), invisible=FALSE), silent=TRUE)
+  if (is(rtn, "try-error")) {
+    return(FALSE)
+  }
+  return(TRUE)
 }
+
 
 # Run SAS Code
 runSas = function(runFile) {
