@@ -12,10 +12,10 @@ function(input, output, session) {
   # Stop it if the browser window is closed.
   session$onSessionEnded(function() {
     # Check rubric#Dirty() and gcDirty() and save values if dirty.
-    for (prob in 1:PROBLEM_COUNT) {
-      if (eval(parse(text=paste0("isolate(rubric", prob, "Dirty())")))) {
-        rubNow = rubricToList(prob)
-        saveRubric(prob, rubNow)
+    for (probNum in 1:PROBLEM_COUNT) {
+      if (eval(parse(text=paste0("isolate(rubric", probNum, "Dirty())")))) {
+        rubNow = rubricToList(probNum)
+        saveRubric(probNum, rubNow)
       }
     }
     if (isolate(gcDirty())) {
@@ -38,12 +38,12 @@ function(input, output, session) {
   })
   
   # Convert UI values for one problem rubric to a list
-  rubricToList = function(prob) {
+  rubricToList = function(probNum) {
     n = length(problemInputIds)
     lst = vector('list', n)
     names(lst) = problemInputIds
     for (id in problemInputIds) {
-      eval(parse(text=paste0("lst[['", id, "']] = isolate(input[['", id, prob, "']])")))
+      eval(parse(text=paste0("lst[['", id, "']] = isolate(input[['", id, probNum, "']])")))
     }
     return(lst)
   }
@@ -336,9 +336,9 @@ function(input, output, session) {
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
     } else {
-      prob = getCurrentProblem(input$currentProblem)
+      probNum = getCurrentProblem(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
       currentFiles(cf)
     }
   }, ignoreInit=TRUE)
@@ -354,15 +354,15 @@ function(input, output, session) {
       shinyjs::disable("runCode")
       shinyjs::disable("analyzeOutput")
     } else {
-      prob = getCurrentProblem(input$currentProblem)
+      probNum = getCurrentProblem(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
       currentFiles(cf)
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
       studentEmail = studentInfo["email"]
-      path = setupSandbox(studentEmail, cf, prob)
+      path = setupSandbox(studentEmail, cf, probNum, rubNow[[probNum]]$doPdf)
       thisPath(path)
-      checks = checkEnables(path, cf, prob)
+      checks = checkEnables(path, cf, probNum)
       # Note: 'condition' cannot have names
       shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
       shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
@@ -384,14 +384,14 @@ function(input, output, session) {
                        function(p) eval(parse(text=paste0("rubric", p, "Dirty()"))))
       if (any(isDirty)) {
         rubNow = rubrics()
-        for (prob in which(isDirty)) {
-          rubNow[[prob]] = rubricToList(prob)
+        for (probNum in which(isDirty)) {
+          rubNow[[probNum]] = rubricToList(probNum)
         }
         rubrics(rubNow)
 
-        for (prob in which(isDirty)) {
-          saveRubric(prob, rubNow[[prob]])
-          eval(parse(text=paste0("rubric", prob, "Dirty(FALSE)")))
+        for (probNum in which(isDirty)) {
+          saveRubric(probNum, rubNow[[probNum]])
+          eval(parse(text=paste0("rubric", probNum, "Dirty(FALSE)")))
         }
       } # end if any(isDirty)
     } else if (last == "Assignment") { # end if leaving the Problems tab
@@ -430,9 +430,9 @@ function(input, output, session) {
     
     if (this == "Grading") {
       rubNow = rubrics()
-      prob = getCurrentProblem(input$currentProblem)
+      probNum = getCurrentProblem(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[prob]])
+      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
       studentEmail = studentInfo["email"]
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
@@ -440,12 +440,12 @@ function(input, output, session) {
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
-        thisPath(setupSandbox(studentEmail, cf, prob))
+        thisPath(setupSandbox(studentEmail, cf, probNum))
       } else {
         currentFiles(cf)
-        path = setupSandbox(studentEmail, cf, prob)
+        path = setupSandbox(studentEmail, cf, probNum, rubNow[[probNum]]$doPdf)
         thisPath(path)
-        checks = checkEnables(path, cf, prob)
+        checks = checkEnables(path, cf, probNum)
         # Note: 'condition' cannot have names
         shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
         shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
@@ -498,8 +498,8 @@ function(input, output, session) {
     req(thisPath(), currentFiles())
     path = thisPath()
     cf = currentFiles()
-    prob = getCurrentProblem(input$currentProblem)
-    rubric = rubrics()[[prob]]
+    probNum = getCurrentProblem(input$currentProblem)
+    rubric = rubrics()[[probNum]]
     cc = checkCode(path, cf, rubric)
     if (!is.null(cc)) shinyjs::disable("analyzeCode")
     print(cc)
@@ -512,10 +512,10 @@ function(input, output, session) {
     cf = currentFiles()
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
     studentEmail = studentInfo["email"]
-    prob = getCurrentProblem(input$currentProblem)
-    rubric = rubrics()[[prob]]
+    probNum = getCurrentProblem(input$currentProblem)
+    rubric = rubrics()[[probNum]]
     #if (is.null(cf$reqMissing) && is.null(cf$runMissing)) {
-      if (runCode(path, cf$runDf$outName)) {
+      if (runCode(path, cf$runDf$outName, rubric$doPdf)) {
         shinyjs::disable("runCode")
         shinyjs::enable("analyzeOutput")
         print(file.info(file.path(path, changeExtension(cf$runDf$outName, "out"))))
@@ -528,8 +528,8 @@ function(input, output, session) {
     req(thisPath(), currentFiles())
     path = thisPath()
     cf = currentFiles()
-    prob = getCurrentProblem(input$currentProblem)
-    rubric = rubrics()[[prob]]
+    probNum = getCurrentProblem(input$currentProblem)
+    rubric = rubrics()[[probNum]]
     co = checkOutput(path, cf, rubric)
     if (!is.null(co)) shinyjs::disable("analyzeOutput")
     print(co)

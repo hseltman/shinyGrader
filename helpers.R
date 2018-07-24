@@ -945,7 +945,7 @@ getCurrentProblem = function(probString) {
 # The save() version of the 'currentFiles' object is used to identify what files
 # define an attempt.  Do not erase "shinyGraderCF.RData" files!
 #
-setupSandbox = function(studentEmail, currentFiles, probNum) {
+setupSandbox = function(studentEmail, currentFiles, probNum, doPdf) {
   studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
   probName = paste0("problem", probNum)
 
@@ -1034,7 +1034,7 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
       if (copy) {
         from = file.path(this$directory, this$inName)
         to = file.path(outDir, this$outName)
-        if (!copyWithPrejudice(from, to)) {
+        if (!copyWithPrejudice(from, to, doPdf)) {
           dualAlert("Sandbox error", 
                     paste("Cannot copy", from, "to", outDir))
           return(NULL)
@@ -1049,7 +1049,7 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
 # Copy a file, with specific edits based on file type,
 # preserving the modify time
 #
-copyWithPrejudice = function(from, to) {
+copyWithPrejudice = function(from, to, doPdf) {
   extension = tolower(gsub("(.*)([.])(.*)", "\\3", from))
   if (! extension %in% c("py", "r", "rmd", "sas")) {
     return(file.copy(from, to, overwrite=TRUE, copy.date=TRUE))
@@ -1101,6 +1101,11 @@ copyWithPrejudice = function(from, to) {
     if (is(code, "try-error")) return(FALSE)
     code = gsub("((^|\\n)\\s*)(%LET\\s+WD\\s*=.*;)",
                   "\\1%LET WD=.;", code, ignore.case=TRUE)
+    if (doPdf) {
+      code = c(paste0("ODS PDF FILE='", changeExtension(to, "pdf"),
+                      "';\nODS GRAPHICS ON;\n"),
+               code)
+    }
     write(code, to)
   } else {
     stop("coding error")
@@ -1110,7 +1115,7 @@ copyWithPrejudice = function(from, to) {
 }
 
 # Run a user's code
-runCode = function(path, runFile) {
+runCode = function(path, runFile, doPdf) {
   # Move to sandbox
   wd = getwd()
   if (is(try(setwd(path), silent=TRUE), "try-error")) {
@@ -1123,13 +1128,13 @@ runCode = function(path, runFile) {
   ext = gsub("(.*)([.][^.]+)", "\\2", runFile)
   
   if (ext == ".R") {
-    rtn = runR(runFile)
+    rtn = runR(runFile, doPdf)
   } else if (ext == ".Rmd") {
-    rtn = runRmd(runFile)
+    rtn = runRmd(runFile, doPdf)
   } else if (ext == ".py") {
-    rtn = runPy(runFile)
+    rtn = runPy(runFile, doPdf)
   } else if (ext == ".sas") {
-    rtn = runSas(runFile)
+    rtn = runSas(runFile, doPdf)
   } else {
     dualAlert("Run Code Error", paste(ext, "is not a valid code extension"))
     return(FALSE)
@@ -1366,7 +1371,7 @@ parseSpec = function(spec) {
 # To allow access to these libraries, set a system environmenal variable
 # (Control Panel / System / Advanced / Environment) called R_LIBS_USER
 # to that location, but with the final "#.#" replaced with "%v".
-runR = function(runFile) {
+runR = function(runFile, doPdf) {
   args = paste("CMD BATCH --no-restore --no-save --quiet", runFile,
                changeExtension(runFile, "out"))
   rtn = try(system2("R", args, invisible=FALSE), silent=TRUE)
@@ -1377,7 +1382,7 @@ runR = function(runFile) {
 }
 
 # Run Rmd Code
-runRmd = function(runFile) {
+runRmd = function(runFile, doPdf) {
   write(c('library("knitr")',
           paste0('knit("', runFile,'")'),
           'library("markdown")',
@@ -1393,7 +1398,7 @@ runRmd = function(runFile) {
 }
 
 # Run Python Code
-runPy = function(runFile) {
+runPy = function(runFile, doPdf) {
   rtn = try(system2("python", stdin=runFile, stdout=changeExtension(runFile, "out"),
                     stderr=changeExtension(runFile, "err"), invisible=FALSE), silent=TRUE)
   if (is(rtn, "try-error")) {
@@ -1404,7 +1409,7 @@ runPy = function(runFile) {
 
 
 # Run SAS Code
-runSas = function(runFile) {
+runSas = function(runFile, doPdf) {
   dualAlert("Not implmented","Need to code runRSas()")
   return(FALSE)
 }
@@ -1491,9 +1496,11 @@ checkEnables = function(path, cf, probNum) {
   if(length(cf$runMissing) == 0) {
     runName = cf$runDf$inName
     outName = file.path(path, changeExtension(cf$runDf$outName, "out"))
+    runIsCanvas = cf$runDf$canvasFlag
   } else {
     runName = cf$runMissing
     outName = file.path(path, changeExtension(runName, "out"))
+    runIsCanvas = FALSE
   }
   rubricName = paste0("rubric", probNum, ".RData")
   codeProbName = file.path(path, "codeProblems.RData")
@@ -1506,12 +1513,15 @@ checkEnables = function(path, cf, probNum) {
                       file.info(rubricName)$mtime,
                       earlyDate)
   hasRun = file.exists(runName)
-  runTime = ifelse(hasRun, cf$runDf$modifyTime, earlyDate)
-  hasUserCode = (hasRun && cf$runDf$canvasFlag) ||
+  runFileTime = ifelse(hasRun, ifelse(length(cf$runMissing) > 0,
+                                      file.info(runName)$mtime,
+                                      cf$runDf$modifyTime),
+                   earlyDate)
+  hasUserCode = (hasRun && runIsCanvas) ||
                 (!is.null(cf$reqDf) && any(cf$reqDf$canvasFlag)) ||
                 (!is.null(cf$optDf) && any(cf$optDf$canvasFlag))
   missingReq = length(cf$reqMissing) > 0
-  newestInput = max(runTime, cf$reqDf$modifyTime, cf$optDf$modifyTime)
+  newestInput = max(runFileTime, cf$reqDf$modifyTime, cf$optDf$modifyTime)
   codeProblemsTime = ifelse(file.exists(codeProbName),
                             file.info(codeProbName)$mtime,
                             earlyDate)
@@ -1531,7 +1541,7 @@ checkEnables = function(path, cf, probNum) {
              outTime < newestInput ||
              outTime < rubricTime)
   
-  analyzeOutput = hasOutput && outTime >= runTime &&
+  analyzeOutput = hasOutput && outTime >= runFileTime &&
                   (outputProblemsTime < outTime ||
                    outputProblemsTime < rubricTime)
   
