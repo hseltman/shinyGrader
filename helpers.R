@@ -1102,9 +1102,10 @@ copyWithPrejudice = function(from, to, doPdf) {
     code = gsub("((^|\\n)\\s*)(%LET\\s+WD\\s*=.*;)",
                   "\\1%LET WD=.;", code, ignore.case=TRUE)
     if (doPdf) {
-      code = c(paste0("ODS PDF FILE='", changeExtension(to, "pdf"),
-                      "';\nODS GRAPHICS ON;\n"),
-               code)
+      code = c(paste0("ODS PDF FILE='", changeExtension(basename(to), "pdf"), "';"),
+               "ODS GRAPHICS ON;\n",
+               code,
+               "ODS PDF CLOSE;")
     }
     write(code, to)
   } else {
@@ -1410,8 +1411,14 @@ runPy = function(runFile, doPdf) {
 
 # Run SAS Code
 runSas = function(runFile, doPdf) {
-  dualAlert("Not implmented","Need to code runRSas()")
-  return(FALSE)
+  args = paste0("-SYSIN '", runFile,  "' -ICON -NOSPLASH -NONEWS -LOG '",
+                changeExtension(runFile, "log"), "' -PRINT '",
+                changeExtension(runFile, "out"), "'")
+  rtn = try(system2(SasProg, args, invisible=FALSE), silent=TRUE)
+  if (is(rtn, "try-error")) {
+    return(FALSE)
+  }
+  return(TRUE)
 }
 
 changeExtension = function(fname, ext) {

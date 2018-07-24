@@ -17,6 +17,12 @@ if (envLoc != "" && is.na(file.info(envLoc)$mode)) {
 globalLoc = if (envLoc == "") Sys.getenv("HOME") else envLoc
 if (globalLoc == "") stop("cannot get name of HOME directory")
 
+# Find SAS
+SasLoc = Sys.getenv("SAS_LOCATION")
+if (SasLoc == "") SasLoc = "C:\\Program Files\\SasHome\\SASFOUNDATION\\9.4"
+SasProg = file.path(SasLoc, "sas.exe")
+
+
 # Complex logic is best accomplished by calling initializeGlobalConfig()
 # and storing these initial results in 'staticGlobalConfig' here, and
 # then using it in the 'server.R' and 'ui.R' files to initialize a
