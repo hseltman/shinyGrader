@@ -696,7 +696,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
   # First try exact target match
   if (fs != "") {
     # Note: may have multiple submissions (-1, etc.)
-    indices = grep(fs, studentFiles$submitName, fixed=TRUE)
+    indices = grep(paste0("^", fs, "$"), studentFiles$submitName)
     matched = studentFiles[indices, ]
     justOne = sum(!duplicated(matched[indices, "submitName"])) == 1
     if (length(indices) > 0 && justOne) {
@@ -712,7 +712,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
     }
     
     # Try a case-insensitive match
-    indices = grep(toupper(fs), toupper(studentFiles$submitName), fixed=TRUE)
+    indices = grep(paste0("^", toupper(fs), "$"), toupper(studentFiles$submitName))
     matched = studentFiles[indices, ]
     justOne = sum(!duplicated(matched[indices, "submitName"])) == 1
     if (length(indices) > 0 && justOne) {
@@ -852,7 +852,7 @@ findCurrentFiles = function(idNum, allFiles, rubric) {
     runFile = c(gsub("[.]RRmd", ".R", runFile), gsub("[.]RRmd", ".Rmd", runFile))
   }
   runDf = matchFile(runFile[1], studentFiles, otherFiles)
-  if (is.null(runDf) && length(runFile) > 2) {
+  if (is.null(runDf) && length(runFile) > 1) {
     runDf = matchFile(runFile[2], studentFiles, otherFiles)
   }
   if (is.null(runDf)) {
@@ -1033,8 +1033,8 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
       }
       if (copy) {
         from = file.path(this$directory, this$inName)
-        if (!file.copy(from, file.path(outDir, this$outName),
-                       overwrite=TRUE, copy.date=TRUE)) {
+        to = file.path(outDir, this$outName)
+        if (!copyWithPrejudice(from, to)) {
           dualAlert("Sandbox error", 
                     paste("Cannot copy", from, "to", outDir))
           return(NULL)
@@ -1045,6 +1045,69 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
   return(sandbox)
 } # end setupSandbox()
 
+
+# Copy a file, with specific edits based on file type,
+# preserving the modify time
+#
+copyWithPrejudice = function(from, to) {
+  extension = tolower(gsub("(.*)([.])(.*)", "\\3", from))
+  if (! extension %in% c("py", "r", "rmd", "sas")) {
+    return(file.copy(from, to, overwrite=TRUE, copy.date=TRUE))
+  }
+  
+  # Students tend to put dir() or ? in code.
+  # We want to remove that.
+  if (extension == "py") {
+    code = try(suppressWarnings(readLines(from)), silent=TRUE)
+    if (is(code, "try-error")) return(FALSE)
+    code = gsub("((^|\\n)[:blank:]*)([?])",
+                  "\\1### ?", code)
+    code = gsub("((^|\\n)[:blank:]*)help[(]",
+                  "\\1### dir(", code)
+  
+  # Students tend to put help() or ? in R code.
+  # We want to remove that.
+  } else if (extension == "r") {
+    code = try(suppressWarnings(readLines(from)), silent=TRUE)
+    if (is(code, "try-error")) return(FALSE)
+    code = gsub("((^|\\n)[:blank:]*)([?])",
+                  "\\1### ?", code)
+    code = gsub("((^|\\n)[:blank:]*)help[(]",
+                  "\\1### help(", code)
+    write(code, to)
+    return(TRUE)
+    
+  # Students tend to put help() or ? in R code.
+  # We want to remove that and assure output is to html.
+  } else if (extension == "rmd") {
+    code = try(suppressWarnings(readLines(from)), silent=TRUE)
+    if (is(code, "try-error")) return(FALSE)
+    code = gsub("((^|\\n)[:blank:]*)([?])",
+                  "\\1### ?", code)
+    code = gsub("((^|\\n)[:blank:]*)help[(]",
+                  "\\1### help(", code)
+    code = gsub("pdf_document",
+                  "html_document", code)
+    code = gsub("(w|W)ord_document",
+                  "html_document", code)
+    write(code, to)
+
+  # Our convention for SAS is to use '%LET wd=.;' to specify
+  # the working directory (to allow an alternate version when
+  # on University Edition).  Here we change the alternate
+  # version to the standard (native SAS) version.
+  } else if (extension == "sas") {
+    code = try(suppressWarnings(readLines(from)), silent=TRUE)
+    if (is(code, "try-error")) return(FALSE)
+    code = gsub("((^|\\n)\\s*)(%LET\\s+WD\\s*=.*;)",
+                  "\\1%LET WD=.;", code, ignore.case=TRUE)
+    write(code, to)
+  } else {
+    stop("coding error")
+  }
+  
+  return(TRUE)
+}
 
 # Run a user's code
 runCode = function(path, runFile) {
@@ -1298,6 +1361,11 @@ parseSpec = function(spec) {
 }
 
 # Run R Code
+# Important note: on Windows, new libraries are probably installed in
+# something like C:\\Users\\myUserName\\Documents\\R\\win-library\\3.4.
+# To allow access to these libraries, set a system environmenal variable
+# (Control Panel / System / Advanced / Environment) called R_LIBS_USER
+# to that location, but with the final "#.#" replaced with "%v".
 runR = function(runFile) {
   args = paste("CMD BATCH --no-restore --no-save --quiet", runFile,
                changeExtension(runFile, "out"))
@@ -1310,8 +1378,18 @@ runR = function(runFile) {
 
 # Run Rmd Code
 runRmd = function(runFile) {
-  dualAlert("Not implmented","Need to code runRmd()")
-  return(FALSE)
+  write(c('library("knitr")',
+          paste0('knit("', runFile,'")'),
+          'library("markdown")',
+          paste0('markdown::markdownToHTML("', changeExtension(runFile, "md"), '", ',
+                 'output="', changeExtension(runFile, "html"), '")')),
+        file="runRmd.R")
+  args = "CMD BATCH --no-restore --no-save --quiet runRmd.R runRmd.out"
+  rtn = try(system2("R", args, invisible=FALSE), silent=TRUE)
+  if (is(rtn, "try-error") || rtn != 0) {
+    return(FALSE)
+  }
+  return(TRUE)
 }
 
 # Run Python Code
