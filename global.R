@@ -39,21 +39,24 @@ if (staticRosterFileName == "") {
 } else {
   staticRosterDirectory = dirname(staticRosterFileName)
   staticRoster = getRoster(staticRosterFileName, staticGlobalConfig[["instructorEmail"]])
-  if (is.null(staticRoster)) {
-    staticRosterDirectory = ""
-    staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
-    staticRosterBaseName = ""
-    fake = FAKE_INSTRUCTOR_ROSTER
-    fake[["Email"]] = instructorEmail
-    staticRoster = fake
-  } else {
-    if (staticRosterDirectory != staticGlobalConfig[["rosterDirectory"]]) {
-      staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
-                                              list(rosterDirectory=staticRosterDirectory))
-    }
-    staticRosterBaseName = basename(attr(staticRoster, "file"))
-  }
 }
+
+if (is.null(staticRoster)) {
+  staticRosterDirectory = ""
+  staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
+  staticRosterBaseName = ""
+  fake = FAKE_INSTRUCTOR_ROSTER
+  fake[["Email"]] = instructorEmail
+  staticRoster = fake
+}
+# else {
+#   if (staticRosterDirectory != staticGlobalConfig[["rosterDirectory"]]) {
+#     staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
+#                                             list(rosterDirectory=staticRosterDirectory))
+#   }
+#   staticRosterBaseName = basename(attr(staticRoster, "file"))
+# }
+
 
 staticRubrics = getRubrics()
 staticActiveProblems = which(sapply(staticRubrics, isProblemActive))
@@ -76,7 +79,7 @@ staticCurrentFiles = findCurrentFiles(id=0,
 staticStudentEmail = staticGlobalConfig[["instructorEmail"]]
 if (staticStudentEmail == "") staticStudentEmail = "solution@fake.edu"
 staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles, 
-                              probNum = min(staticActiveProblems))
+                              probNum = min(1, staticActiveProblems))
 
 
 # Code to set initial values of rubric widgets.
