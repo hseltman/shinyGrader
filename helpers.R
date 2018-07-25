@@ -1064,6 +1064,7 @@ copyWithPrejudice = function(from, to, doPdf) {
                   "\\1### ?", code)
     code = gsub("((^|\\n)[:blank:]*)help[(]",
                   "\\1### dir(", code)
+    if (is(try(write(code, to), silent=TRUE), "try-error")) return(FALSE)
   
   # Students tend to put help() or ? in R code.
   # We want to remove that.
@@ -1074,7 +1075,7 @@ copyWithPrejudice = function(from, to, doPdf) {
                   "\\1### ?", code)
     code = gsub("((^|\\n)[:blank:]*)help[(]",
                   "\\1### help(", code)
-    write(code, to)
+    if (is(try(write(code, to), silent=TRUE), "try-error")) return(FALSE)
     return(TRUE)
     
   # Students tend to put help() or ? in R code.
@@ -1090,8 +1091,8 @@ copyWithPrejudice = function(from, to, doPdf) {
                   "html_document", code)
     code = gsub("(w|W)ord_document",
                   "html_document", code)
-    write(code, to)
-
+    if (is(try(write(code, to), silent=TRUE), "try-error")) return(FALSE)
+    
   # Our convention for SAS is to use '%LET wd=.;' to specify
   # the working directory (to allow an alternate version when
   # on University Edition).  Here we change the alternate
@@ -1107,7 +1108,7 @@ copyWithPrejudice = function(from, to, doPdf) {
                code,
                "ODS PDF CLOSE;")
     }
-    write(code, to)
+    if (is(try(write(code, to), silent=TRUE), "try-error")) return(FALSE)
   } else {
     stop("coding error")
   }
