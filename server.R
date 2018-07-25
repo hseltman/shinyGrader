@@ -541,12 +541,13 @@ function(input, output, session) {
   }, ignoreInit=TRUE)
 
   # Save default rubrics  
-  for (problem in 1:PROBLEM_COUNT) {
-    eval(parse(text=c(paste0("observeEvent(input$saveRubric", problem, "AsDefault, {"),
-                      "browser()",
+  for (probNum in 1:PROBLEM_COUNT) {
+    eval(parse(text=c(paste0("observeEvent(input$saveRubric", probNum, "AsDefault, {"),
+                      paste0("rubNow = rubricToList(", probNum, ")"),
+                      paste0("saveRubric(", probNum, ", rubNow, home=TRUE)"),
                       "})")))
   }
-  rm(problem)
+  rm(probNum)
   
     
   #########################

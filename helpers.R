@@ -503,8 +503,17 @@ parseFileNames = function(filenames, RE) {
 # 'submitProblemRubric#') on one Problem Rubric page. It is
 # created by the 'observeInput()' for 'submitProblemRubric#'.
 #
-saveRubric = function(problem, rubricList) {
-  save(rubricList, file=paste0("rubric", problem, ".RData"))
+saveRubric = function(problem, rubricList, home=FALSE) {
+  if (home) {
+    file = file.path(globalLoc, "defaultRubric.RData")
+  } else {
+    file = paste0("rubric", problem, ".RData")
+  }
+  rtn = try(save(rubricList, file=file), silent=TRUE)
+  if (is(rtn, "try-error")) {
+    dualAlert("Error saving rubric",
+              paste("Could not save", file))
+  }
   invisible(NULL)
 }
 
@@ -526,6 +535,16 @@ getRubrics = function() {
     if (is(rslt, "try-error")) {
       rubric[[problem]] = rubricDefaults
       names(rubric[[problem]]) = names(rubric[[problem]])
+      defRubName = file.path(globalLoc, "defaultRubric.RData")
+      if (file.exists(defRubName)) {
+        dflt = try(load(defRubName), silent=TRUE)
+        if (is(dflt, "try-error") || length(dflt) !=1 || dflt != "rubricList") {
+          dualAlert("Bad default rubric",
+                    paste("You should delete", defRubName))
+        } else {
+          rubric[[problem]] = modifyList(rubric[[problem]], rubricList)
+        }
+      }
     } else {
       if (length(rslt) != 1 || rslt != "rubricList")
         stop(paste0("rubric", problem, ".RData"), " was manually altered!")
