@@ -7,6 +7,7 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
+  addResourcePath("shinyGrader", getwd())
   
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
@@ -169,6 +170,8 @@ function(input, output, session) {
   # Keep track of last tab
   lastTab = reactiveVal("Assignment")
 
+  # Possible html output
+  htmlFile = reactiveVal(NULL)
     
   ########################
   ### Create observers ###
@@ -368,6 +371,7 @@ function(input, output, session) {
       shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
       shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
     }
+    htmlFile(NULL)
   }, ignoreInit=TRUE)
 
 
@@ -514,13 +518,14 @@ function(input, output, session) {
     studentEmail = studentInfo["email"]
     probNum = getCurrentProblem(input$currentProblem)
     rubric = rubrics()[[probNum]]
-    #if (is.null(cf$reqMissing) && is.null(cf$runMissing)) {
-      if (runCode(path, cf$runDf$outName, rubric$doPdf)) {
-        shinyjs::disable("runCode")
-        shinyjs::enable("analyzeOutput")
-        print(file.info(file.path(path, changeExtension(cf$runDf$outName, "out"))))
-      }
-    #} # end if path not null (setup succeeded)
+    if (runCode(path, cf$runDf$outName, rubric$doPdf)) {
+      shinyjs::disable("runCode")
+      shinyjs::enable("analyzeOutput")
+      htmlName = file.path(path, 
+                           changeExtension(cf$runDf$outName, "html"))
+      htmlFile(htmlName)
+      print(file.info(file.path(path, changeExtension(cf$runDf$outName, "out"))))
+    }
   }, ignoreInit=TRUE)
   
   # Check one student's output
@@ -534,7 +539,14 @@ function(input, output, session) {
     if (!is.null(co)) shinyjs::disable("analyzeOutput")
     print(co)
   }, ignoreInit=TRUE)
-  
+
+  # Save default rubrics  
+  for (problem in 1:PROBLEM_COUNT) {
+    eval(parse(text=c(paste0("observeEvent(input$saveRubric", problem, "AsDefault, {"),
+                      "browser()",
+                      "})")))
+  }
+  rm(problem)
   
     
   #########################
@@ -602,12 +614,14 @@ function(input, output, session) {
     }
   })
 
-  for (problem in 1:PROBLEM_COUNT) {
-    eval(parse(text=c(paste0("observeEvent(input$saveRubric", problem, "AsDefault, {"),
-                      "browser()",
-                      "})")))
-  }
-  rm(problem)
-  
+  # Include html output on Grading page
+  # Note: this depends on "addResourcePath("shinyGrader", getwd())"
+  output$inc = renderUI({
+    validate(need(htmlFile(), "No html output available"))
+    tgs = tags$iframe(src = paste0("/shinyGrader/", htmlFile()),
+                      style="width:100%;",  frameborder="0",
+                      id="iframe", height = "500px")
+    return(tgs)
+  })
   
 } # end server function
