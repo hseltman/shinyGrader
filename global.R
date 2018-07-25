@@ -47,7 +47,7 @@ if (is.null(staticRoster)) {
   staticRosterBaseName = ""
   fake = FAKE_INSTRUCTOR_ROSTER
   if (staticGlobalConfig[["instructorEmail"]] != "")
-    fake[["Email"]] = instructorEmail
+    fake[["Email"]] = staticGlobalConfig[["instructorEmail"]] != ""
   staticRoster = fake
 }
 # else {
