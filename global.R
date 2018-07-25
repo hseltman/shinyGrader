@@ -46,7 +46,8 @@ if (is.null(staticRoster)) {
   staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
   staticRosterBaseName = ""
   fake = FAKE_INSTRUCTOR_ROSTER
-  fake[["Email"]] = instructorEmail
+  if (staticGlobalConfig[["instructorEmail"]] != "")
+    fake[["Email"]] = instructorEmail
   staticRoster = fake
 }
 # else {
