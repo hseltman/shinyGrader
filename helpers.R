@@ -464,7 +464,7 @@ parseFileNames = function(filenames, RE) {
   matchDf$resubmitNumber[matchDf$resubmitNumber == ""] = "0"
   matchDf$resubmitNumber = as.numeric(matchDf$resubmitNumber)
   matchDf$lateFlag = gsub("_", "", matchDf$resubmitNumber)
-  submitName = paste0(matchDf$baseFileName, matchDf$fileExtension)
+  submitName = I(paste0(matchDf$baseFileName, matchDf$fileExtension))
   matchDf = cbind(submitName, matchDf)
   return(list(Canvas=matchDf, other=other))
 } # end parseFilenames()
