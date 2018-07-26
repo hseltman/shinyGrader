@@ -620,7 +620,7 @@ function(input, output, session) {
   output$inc = renderUI({
     validate(need(htmlFile(), "No html output available"))
     tgs = tags$iframe(src = paste0("/shinyGrader/", htmlFile()),
-                      style="width:100%;",  frameborder="0",
+                      style="width:100%;",
                       id="iframe", height = "500px")
     return(tgs)
   })
