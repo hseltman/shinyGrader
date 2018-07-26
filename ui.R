@@ -20,6 +20,7 @@ fluidPage(
                                   HTML("Change folder <sup>&Dagger;</sup>"))),
                       column(10, p(id="currentFolder", style="padding:7px;"))),
 
+             verbatimTextOutput("canvasFiles"),
              
              fluidRow(column(2, actionButton("fileRefresh", "Manual file refresh")),
                       column(10, 

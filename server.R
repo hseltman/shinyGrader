@@ -624,5 +624,28 @@ function(input, output, session) {
                       id="iframe", height = "500px")
     return(tgs)
   })
-  
+
+  output$canvasFiles = renderPrint({
+    cf = allFiles()$Canvas$submitName
+    if (length(cf) == 0) {
+      cat("No Canvas files\n")
+    } else {
+      cat("Canvas files:\n")
+      ucf = split(cf, tolower(cf))
+      for (fnames in ucf) {
+        oneTable = table(fnames)
+        if (length(oneTable) == 1) {
+          cat(names(oneTable), " (", as.vector(oneTable), ")\n", sep="")
+        } else {
+          oneTable = oneTable[order(oneTable, decreasing=TRUE)]
+          otNames = names(oneTable)
+          otCounts = as.vector(oneTable)
+          cat(otNames[1], " (", otCounts[1], ")  [", 
+              paste(paste0(otNames[-1], " (", otCounts[-1], ")"), collapse=", "),
+              "]\n", sep="")
+        }
+      }
+    }
+  })
+    
 } # end server function
