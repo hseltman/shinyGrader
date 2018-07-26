@@ -964,7 +964,7 @@ getCurrentProblem = function(probString) {
 # The save() version of the 'currentFiles' object is used to identify what files
 # define an attempt.  Do not erase "shinyGraderCF.RData" files!
 #
-setupSandbox = function(studentEmail, currentFiles, probNum, doPdf) {
+setupSandbox = function(studentEmail, currentFiles, probNum) {
   studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
   probName = paste0("problem", probNum)
 
@@ -1031,11 +1031,17 @@ setupSandbox = function(studentEmail, currentFiles, probNum, doPdf) {
   
   # Copy files to sandbox
   if (!is.null(currentFiles)) {
+    if (is.null(currentFiles$runDf)) {
+      runFile = ""
+    } else {
+      runFile = currentFiles$runDf[1, "outName"]
+    }
     allDf = rbind(currentFiles$runDf, currentFiles$reqDf, currentFiles$optDf)
     inTime = file.info(file.path(allDf$directory, allDf$inName))$mtime
     outTime = file.info(file.path(sandbox, allDf$directory, allDf$outName))$mtime
     for (row in seq(along.with=allDf$outName)) {
       this = allDf[row, ]
+      isRunFile = this$outName == runFile
       outDir = file.path(sandbox, this$directory)
       copy = FALSE
       if (is.na(outTime[row])) {
@@ -1053,7 +1059,7 @@ setupSandbox = function(studentEmail, currentFiles, probNum, doPdf) {
       if (copy) {
         from = file.path(this$directory, this$inName)
         to = file.path(outDir, this$outName)
-        if (!copyWithPrejudice(from, to, doPdf)) {
+        if (!copyWithPrejudice(from, to, isRunFile)) {
           dualAlert("Sandbox error", 
                     paste("Cannot copy", from, "to", outDir))
           return(NULL)
@@ -1068,13 +1074,13 @@ setupSandbox = function(studentEmail, currentFiles, probNum, doPdf) {
 # Copy a file, with specific edits based on file type,
 # preserving the modify time
 #
-copyWithPrejudice = function(from, to, doPdf) {
+copyWithPrejudice = function(from, to, isRunFile) {
   extension = tolower(gsub("(.*)([.])(.*)", "\\3", from))
   if (! extension %in% c("py", "r", "rmd", "sas")) {
     return(file.copy(from, to, overwrite=TRUE, copy.date=TRUE))
   }
   
-  # Students tend to put dir() or ? in code.
+  # Students tend to put dir() or ? in Python code.
   # We want to remove that.
   if (extension == "py") {
     code = try(suppressWarnings(readLines(from)), silent=TRUE)
@@ -1097,7 +1103,7 @@ copyWithPrejudice = function(from, to, doPdf) {
     if (is(try(write(code, to), silent=TRUE), "try-error")) return(FALSE)
     return(TRUE)
     
-  # Students tend to put help() or ? in R code.
+  # Students tend to put help() or ? in Rmd code.
   # We want to remove that and assure output is to html.
   } else if (extension == "rmd") {
     code = try(suppressWarnings(readLines(from)), silent=TRUE)
@@ -1121,11 +1127,12 @@ copyWithPrejudice = function(from, to, doPdf) {
     if (is(code, "try-error")) return(FALSE)
     code = gsub("((^|\\n)\\s*)(%LET\\s+WD\\s*=.*;)",
                   "\\1%LET WD=.;", code, ignore.case=TRUE)
-    if (doPdf) {
-      code = c(paste0("ODS PDF FILE='", changeExtension(basename(to), "pdf"), "';"),
+    if (isRunFile) {
+      code = c("ODS HTML CLOSE;",
+               paste0("ODS HTML FILE='", changeExtension(basename(to), "html"), "';"),
                "ODS GRAPHICS ON;\n",
                code,
-               "ODS PDF CLOSE;")
+               "ODS HTML CLOSE;")
     }
     if (is(try(write(code, to), silent=TRUE), "try-error")) return(FALSE)
   } else {
@@ -1136,7 +1143,7 @@ copyWithPrejudice = function(from, to, doPdf) {
 }
 
 # Run a user's code
-runCode = function(path, runFile, doPdf) {
+runCode = function(path, runFile) {
   # Move to sandbox
   wd = getwd()
   if (is(try(setwd(path), silent=TRUE), "try-error")) {
@@ -1149,13 +1156,13 @@ runCode = function(path, runFile, doPdf) {
   ext = gsub("(.*)([.][^.]+)", "\\2", runFile)
   
   if (ext == ".R") {
-    rtn = runR(runFile, doPdf)
+    rtn = runR(runFile)
   } else if (ext == ".Rmd") {
-    rtn = runRmd(runFile, doPdf)
+    rtn = runRmd(runFile)
   } else if (ext == ".py") {
-    rtn = runPy(runFile, doPdf)
+    rtn = runPy(runFile)
   } else if (ext == ".sas") {
-    rtn = runSas(runFile, doPdf)
+    rtn = runSas(runFile)
   } else {
     dualAlert("Run Code Error", paste(ext, "is not a valid code extension"))
     return(FALSE)
@@ -1364,7 +1371,7 @@ parseSpec = function(spec) {
         pts = 0
         if (pm[1]!="") {
           dualAlert("Rubric error",
-                    "In requirements and anathemas, a point count must come first inside '{}'.")
+                    paste0("Invalid '{pts:msg}' prefix in ", prefix, "."))
         }
       }
       msg = ifelse(length(pm) > 1, paste(pm[-1], collapse=":"), "")
@@ -1392,53 +1399,70 @@ parseSpec = function(spec) {
 # To allow access to these libraries, set a system environmenal variable
 # (Control Panel / System / Advanced / Environment) called R_LIBS_USER
 # to that location, but with the final "#.#" replaced with "%v".
-runR = function(runFile, doPdf) {
+runR = function(runFile) {
+  outFile = changeExtension(runFile, "out")
   args = paste("CMD BATCH --no-restore --no-save --quiet", runFile,
-               changeExtension(runFile, "out"))
-  rtn = try(system2("R", args, invisible=FALSE), silent=TRUE)
-  if (is(rtn, "try-error")) {
+               outFile)
+  exitCode = try(system2("R", args, invisible=FALSE), silent=TRUE)
+  if (is(exitCode, "try-error")) {
     return(FALSE)
   }
-  return(TRUE)
+  rtn = TRUE
+  attr(rtn, "exitCode") = exitCode
+  attr(rtn, "outFile") = outFile
+  return(rtn)
 }
 
 # Run Rmd Code
-runRmd = function(runFile, doPdf) {
+runRmd = function(runFile) {
+  outFile = changeExtension(runFile, "html")
   write(c('library("knitr")',
           paste0('knit("', runFile,'")'),
           'library("markdown")',
           paste0('markdown::markdownToHTML("', changeExtension(runFile, "md"), '", ',
-                 'output="', changeExtension(runFile, "html"), '")')),
+                 'output="', outFile, '")')),
         file="runRmd.R")
   args = "CMD BATCH --no-restore --no-save --quiet runRmd.R runRmd.out"
-  rtn = try(system2("R", args, invisible=FALSE), silent=TRUE)
-  if (is(rtn, "try-error") || rtn != 0) {
+  exitCode = try(system2("R", args, invisible=FALSE), silent=TRUE)
+  if (is(exitCode, "try-error")) {
     return(FALSE)
   }
-  return(TRUE)
+  rtn = TRUE
+  attr(rtn, "exitCode") = exitCode
+  attr("rtn", "outFile") = outFile
+  return(rtn)
 }
 
 # Run Python Code
-runPy = function(runFile, doPdf) {
-  rtn = try(system2("python", stdin=runFile, stdout=changeExtension(runFile, "out"),
-                    stderr=changeExtension(runFile, "err"), invisible=FALSE), silent=TRUE)
-  if (is(rtn, "try-error")) {
+runPy = function(runFile) {
+  outFile = changeExtension(runFile, "out")
+  exitCode = try(system2("python", stdin=runFile, stdout=outFile,
+                         stderr=changeExtension(runFile, "err"), invisible=FALSE),
+                 silent=TRUE)
+  if (is(exitCode, "try-error")) {
     return(FALSE)
   }
-  return(TRUE)
+  rtn = TRUE
+  attr(rtn, "exitCode") = exitCode
+  attr(rtn, "outFile") = outFile
+  return(rtn)
 }
 
 
 # Run SAS Code
-runSas = function(runFile, doPdf) {
+runSas = function(runFile) {
+  outFile = changeExtension(runFile, "html")
   args = paste0("-SYSIN '", runFile,  "' -ICON -NOSPLASH -NONEWS -LOG '",
                 changeExtension(runFile, "log"), "' -PRINT '",
-                changeExtension(runFile, "out"), "'")
-  rtn = try(system2(SasProg, args, invisible=FALSE), silent=TRUE)
-  if (is(rtn, "try-error")) {
+                changeExtension(runFile, "lst"), "'")
+  exitCode = try(system2(SasProg, args, invisible=FALSE), silent=TRUE)
+  if (is(exitCode, "try-error")) {
     return(FALSE)
   }
-  return(TRUE)
+  rtn = TRUE
+  attr(rtn, "exitCode") = exitCode
+  attr(rtn, "outFile") = outFile
+  return(rtn)
 }
 
 changeExtension = function(fname, ext) {

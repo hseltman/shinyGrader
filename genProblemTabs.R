@@ -58,8 +58,6 @@ probPanelCodeOne = c(
   '                                  "Optional secondary matching text", width="100%",',
   '                                  value=""))),',
   '    HTML("&nbsp"),',
-  '    checkboxInput("doPdf##", "Attempt to make pdf", value=FALSE),',
-  '    HTML("&nbsp"),',
   '    p("Requirements and anathemas (anti-requirements) are interpreted as regular",',
   '      "expressions, unless quoted.  An optional initial {#} or {#: myComment} deducts",',
   '      "that many points for missing requirements or included anathemas.  (Negative",',

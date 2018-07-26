@@ -356,6 +356,7 @@ function(input, output, session) {
       shinyjs::disable("analyzeCode")
       shinyjs::disable("runCode")
       shinyjs::disable("analyzeOutput")
+      htmlFile(NULL)
     } else {
       probNum = getCurrentProblem(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
@@ -363,15 +364,27 @@ function(input, output, session) {
       currentFiles(cf)
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
       studentEmail = studentInfo["email"]
-      path = setupSandbox(studentEmail, cf, probNum, rubNow[[probNum]]$doPdf)
+      path = setupSandbox(studentEmail, cf, probNum)
+      shinyjs::html(id="sandboxVersion", 
+                    paste("<strong>Version =", basename(path), "</strong>"))
       thisPath(path)
       checks = checkEnables(path, cf, probNum)
-      # Note: 'condition' cannot have names
+      # Note: toggleState() does not allow 'condition' to have names
       shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
       shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
       shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
+      runFile = cf$runDf[1, "outName"]
+      if (is.null(runFile)) {
+        htmlFile(NULL)
+      } else {
+        outFile = file.path(path, changeExtension(runFile, "html"))
+        if (file.exists(outFile)) {
+          htmlFile(outFile)
+        } else {
+          htmlFile(NULL)
+        }
+      }
     }
-    htmlFile(NULL)
   }, ignoreInit=TRUE)
 
 
@@ -441,13 +454,14 @@ function(input, output, session) {
       studentEmail = studentInfo["email"]
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
+        path = setupSandbox(studentEmail, cf, probNum)
+        thisPath(path)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
-        thisPath(setupSandbox(studentEmail, cf, probNum))
       } else {
         currentFiles(cf)
-        path = setupSandbox(studentEmail, cf, probNum, rubNow[[probNum]]$doPdf)
+        path = setupSandbox(studentEmail, cf, probNum)
         thisPath(path)
         checks = checkEnables(path, cf, probNum)
         # Note: 'condition' cannot have names
@@ -455,6 +469,8 @@ function(input, output, session) {
         shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
         shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
       }
+      shinyjs::html(id="sandboxVersion", 
+                    paste("<strong>Version =", basename(path), "</strong>"))
     }
     
     lastTab(this)
@@ -518,13 +534,19 @@ function(input, output, session) {
     studentEmail = studentInfo["email"]
     probNum = getCurrentProblem(input$currentProblem)
     rubric = rubrics()[[probNum]]
-    if (runCode(path, cf$runDf$outName, rubric$doPdf)) {
+    rtn = runCode(path, cf$runDf$outName)
+    if (rtn) {
       shinyjs::disable("runCode")
       shinyjs::enable("analyzeOutput")
-      htmlName = file.path(path, 
-                           changeExtension(cf$runDf$outName, "html"))
-      htmlFile(htmlName)
-      print(file.info(file.path(path, changeExtension(cf$runDf$outName, "out"))))
+      outFile = attr(rtn, "outFile")
+      exitCode = attr(rtn, "exitCode")
+      if (substring(outFile, nchar(outFile) - 3) == "html") {
+        htmlName = file.path(path, outFile)
+        htmlFile(htmlName)
+      } else {
+        htmlFile(NULL)
+      }
+      print(file.info(file.path(path, outFile)))
     }
   }, ignoreInit=TRUE)
   

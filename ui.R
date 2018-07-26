@@ -64,7 +64,9 @@ fluidPage(
                column(7, verbatimTextOutput("filesForOne"))),
       fluidRow(column(2, disabled(actionButton("analyzeCode", "Analyze code"))),
                column(2, disabled(actionButton("runCode", "Run code"))),
-               column(2, disabled(actionButton("analyzeOutput", "Analyse output")))),
+               column(2, disabled(actionButton("analyzeOutput", "Analyse output"))),
+               column(2, p(id="sandboxVersion", style="padding:7px;"))),
+      p(HTML("&nbsp;")),
       htmlOutput("inc")
       ), # end "Grading" tabPanel
     
