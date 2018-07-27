@@ -1176,7 +1176,7 @@ runCode = function(path, runFile) {
 # Return a named list based on section filename.  Call the first element "runfile"
 # if present and unnamed.
 splitCodeRubric = function(spec) {
-  if (length(spec) == 0) return(NULL)
+  if (length(spec) == 0 || (length(spec)==1 && spec=="")) return(NULL)
   spec = strsplit(spec, split="\n")[[1]]
   boundaries = grep("^[[].+]$", spec)
   
@@ -1474,11 +1474,17 @@ checkOutput = function(path, cf, rubric) {
   outputReq = splitCodeRubric(rubric$outputReq)
   outputAnath = splitCodeRubric(rubric$outputAnath)
   if(length(cf$runMissing) == 0) {
-    outName = changeExtension(cf$runDf$outName, "out")
+    runName = cf$runDf$outName
     outNonCanvas = cf$runDf$canvasFlag == FALSE
   } else {
-    outName = changeExtension(cf$runMissing, "out")
+    runName = changeExtension(cf$runMissing)
     outNonCanvas = FALSE
+  }
+  extension = gsub("(.*)([.])(.*)", "\\3", runName)
+  if (tolower(extension) %in% c("rmd", "sas")) {
+    outName = changeExtension(cf$runDf$outName, "out")
+  } else {
+    outName = changeExtension(cf$runDf$outName, "html")
   }
   m = match("runFile", names(outputReq))
   if (!is.na(m)) {
