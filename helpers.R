@@ -1301,14 +1301,14 @@ checkCode = function(path, cf, rubric) {
     }
   )
   
-  cc = do.call(rbind, codeProblems)
-  cc$mention = (cc$found == cc$anathema)  & !cc$badRE
-  cc$dock = 0
-  cc$dock[cc$mention] = cc$pts[cc$mention]
+  problems = do.call(rbind, codeProblems)
+  problems$mention = (problems$found == problems$anathema)  & !problems$badRE
+  problems$dock = 0
+  problems$dock[problems$mention] = problems$pts[problems$mention]
   
   # Both save and return the final data.frame
-  save(cc, file=file.path(path, "codeProblems.RData"))
-  return(cc)
+  save(problems, file=file.path(path, "codeProblems.RData"))
+  return(problems)
 }  # end checkCode()
 
 # test specification for a text
@@ -1429,7 +1429,7 @@ runRmd = function(runFile) {
   }
   rtn = TRUE
   attr(rtn, "exitCode") = exitCode
-  attr("rtn", "outFile") = outFile
+  attr(rtn, "outFile") = outFile
   return(rtn)
 }
 
@@ -1535,14 +1535,14 @@ checkOutput = function(path, cf, rubric) {
                           }
   )
   
-  co = do.call(rbind, outputProblems)
-  co$mention = (co$found == co$anathema)  & !co$badRE
-  co$dock = 0
-  co$dock[co$mention] = co$pts[co$mention]
+  problems = do.call(rbind, outputProblems)
+  problems$mention = (problems$found == problems$anathema)  & !problems$badRE
+  problems$dock = 0
+  problems$dock[problems$mention] = problems$pts[problems$mention]
   
   # Both save and return the final data.frame
-  save(co, file=file.path(path, "outputProblems.RData"))
-  return(co)
+  save(problems, file=file.path(path, "outputProblems.RData"))
+  return(problems)
 }  # end checkOutput()
 
 

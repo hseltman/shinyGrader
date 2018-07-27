@@ -673,13 +673,13 @@ function(input, output, session) {
 
   # Include html output on Grading page
   # Note: this depends on "addResourcePath("shinyGrader", getwd())"
-  output$inc = renderUI({
-    validate(need(htmlFile(), "No html output available"))
-    tgs = tags$iframe(src = paste0("/shinyGrader/", htmlFile()),
-                      style="width:100%;",
-                      id="iframe", height = "500px")
-    return(tgs)
-  })
+  # output$inc = renderUI({
+  #   validate(need(htmlFile(), "No html output available"))
+  #   tgs = tags$iframe(src = paste0("/shinyGrader/", htmlFile()),
+  #                     style="width:100%;",
+  #                     id="iframe", height = "500px")
+  #   return(tgs)
+  # })
 
   output$canvasFiles = renderPrint({
     cf = allFiles()$Canvas$submitName
@@ -704,4 +704,42 @@ function(input, output, session) {
     }
   })
     
+  # View files in "Grader" tab
+  output$gradeViewOutput = renderUI({
+    validate(need(input$gradeViewChoice != "(none)", "Nothing to view"))
+    fname = input$gradeViewChoice
+    extension = gsub("(.*)([.])(.*)", "\\3", fname)
+    path = thisPath()
+    if (input$gradeViewChoice == "Code Analysis") {
+      varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
+      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+        dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
+        return(p("not viewable"))
+      } else {
+        problems = apply(problems[problems$mention == TRUE, ], 1,
+                          function(line) {
+                            p(paste0(ifelse(line[['pts']] < 0, 
+                                            paste("Bonus of", abs(line[['pts']]), "for"),
+                                            ifelse(line[['pts']]==0, "Zero penalty for",
+                                                   paste(line[['pts']], "points lost for"))),
+                                     ifelse(line[['anathema']], " '", "missing '"),
+                                     line[['msg']], "' in ", line[['file']]))
+                          })
+        browser()
+        tgs = do.call(shiny::tags$div, problems)
+        tgs = shiny::tags$div(p("Fix server.R at line 730"))
+        return(tgs)
+      }
+    } else if (input$gradeViewChoice == "Output Analysis") {
+      return(p("not yet coded"))
+    } else if (extension == "html") {
+      tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
+                        style="width:100%;",
+                        id="iframe", height = "500px")
+      return(tgs)
+    } else {
+      return(p("not yet coded"))
+    }
+  })
+  
 } # end server function
