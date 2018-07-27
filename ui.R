@@ -66,8 +66,9 @@ fluidPage(
                column(2, disabled(actionButton("runCode", "Run code"))),
                column(2, disabled(actionButton("analyzeOutput", "Analyse output"))),
                column(2, p(id="sandboxVersion", style="padding:7px;"))),
+      radioButtons("gradeViewChoice", "View", choices="(none)", inline=TRUE),
       p(HTML("&nbsp;")),
-      htmlOutput("inc")
+      htmlOutput("gradeViewOutput")
       ), # end "Grading" tabPanel
     
     tabPanel("Letters",

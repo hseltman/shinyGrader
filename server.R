@@ -350,24 +350,23 @@ function(input, output, session) {
   # Note roster$serialNum->input$selectStudent
   observeEvent(c(input$selectStudent, input$currentProblem), {
     rubNow = rubrics()
+    probNum = getCurrentProblem(input$currentProblem)
+    id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+    cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
+    currentFiles(cf)
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
-      thisPath(NULL)
+      path = NULL
       shinyjs::disable("analyzeCode")
       shinyjs::disable("runCode")
       shinyjs::disable("analyzeOutput")
       htmlFile(NULL)
     } else {
-      probNum = getCurrentProblem(input$currentProblem)
-      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
-      currentFiles(cf)
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
       studentEmail = studentInfo["email"]
       path = setupSandbox(studentEmail, cf, probNum)
       shinyjs::html(id="sandboxVersion", 
                     paste("<strong>Version =", basename(path), "</strong>"))
-      thisPath(path)
       checks = checkEnables(path, cf, probNum)
       # Note: toggleState() does not allow 'condition' to have names
       shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
@@ -385,6 +384,8 @@ function(input, output, session) {
         }
       }
     }
+    thisPath(path)
+    updateGradeViewChoice(cf, path)
   }, ignoreInit=TRUE)
 
 
@@ -471,10 +472,43 @@ function(input, output, session) {
       }
       shinyjs::html(id="sandboxVersion", 
                     paste("<strong>Version =", basename(path), "</strong>"))
+      updateGradeViewChoice(cf, path)
     }
     
     lastTab(this)
   }, ignoreNULL=TRUE, ignoreInit=TRUE, priority=10)
+  
+  
+  updateGradeViewChoice = function(currentFiles, path) {
+    if (is.null(currentFiles)) {
+      updateRadioButtons("gradeViewChoice", choices="(none)")
+    } else {
+      runFile = currentFiles$runDf$outName
+      files = c(runFile,
+                currentFiles$reqDf$outName,
+                currentFiles$optDf$outName)
+      if (file.exists(file.path(path, "codeProblems.RData"))) {
+        files = c(files, "Code Analysis")
+      }
+      if (!is.null(runFile)) {
+        htmlFile = changeExtension(runFile, ".html")
+        if (file.exists(file.path(path, htmlFile))) {
+          files = c(files, htmlFile)
+        } else {
+          outFile = changeExtension(runFile, ".html")
+          if (file.exists(file.path(outFile))) {
+            files = c(files, outFile)
+          }
+        }
+      }
+      if (file.exists(file.path(path, "outputProblems.RData"))) {
+        files = c(files, "Output Analysis")
+      }
+      if (is.null(files)) files = "(none)"
+      updateRadioButtons(session, "gradeViewChoice", choices=files, inline=TRUE)
+    }
+  }
+  
   
   # Handle change in courseId
   observeEvent(input$courseId, {
