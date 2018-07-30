@@ -1374,7 +1374,7 @@ parseSpec = function(spec) {
                     paste0("Invalid '{pts:msg}' prefix in ", prefix, "."))
         }
       }
-      msg = ifelse(length(pm) > 1, paste(pm[-1], collapse=":"), "")
+      msg = ifelse(length(pm) > 1, trimws(paste(pm[-1], collapse=":")), "")
     }
     pattern = trimws(substring(spec, preLen+1))
   } # end dealing with the prefix

@@ -44,7 +44,12 @@ function(input, output, session) {
     lst = vector('list', n)
     names(lst) = problemInputIds
     for (id in problemInputIds) {
-      eval(parse(text=paste0("lst[['", id, "']] = isolate(input[['", id, probNum, "']])")))
+      val = eval(parse(text=paste0("isolate(input[['", id, probNum, "']])")))
+      if (is.character(val)) {
+        eval(parse(text=paste0("lst[['", id, "']] = trimws(val)")))
+      } else {
+        eval(parse(text=paste0("lst[['", id, "']] = val")))
+      }
     }
     return(lst)
   }
@@ -491,12 +496,12 @@ function(input, output, session) {
         files = c(files, "Code Analysis")
       }
       if (!is.null(runFile)) {
-        htmlFile = changeExtension(runFile, ".html")
+        htmlFile = changeExtension(runFile, "html")
         if (file.exists(file.path(path, htmlFile))) {
           files = c(files, htmlFile)
         } else {
-          outFile = changeExtension(runFile, ".html")
-          if (file.exists(file.path(outFile))) {
+          outFile = changeExtension(runFile, "out")
+          if (file.exists(file.path(path, outFile))) {
             files = c(files, outFile)
           }
         }
@@ -555,7 +560,10 @@ function(input, output, session) {
     probNum = getCurrentProblem(input$currentProblem)
     rubric = rubrics()[[probNum]]
     cc = checkCode(path, cf, rubric)
-    if (!is.null(cc)) shinyjs::disable("analyzeCode")
+    if (!is.null(cc)) {
+      shinyjs::disable("analyzeCode")
+      updateGradeViewChoice(cf, path)
+    }
     print(cc)
   }, ignoreInit=TRUE)
     
@@ -719,26 +727,51 @@ function(input, output, session) {
         problems = apply(problems[problems$mention == TRUE, ], 1,
                           function(line) {
                             p(paste0(ifelse(line[['pts']] < 0, 
-                                            paste("Bonus of", abs(line[['pts']]), "for"),
+                                            paste0("Bonus of ", abs(line[['pts']]), " for"),
                                             ifelse(line[['pts']]==0, "Zero penalty for",
-                                                   paste(line[['pts']], "points lost for"))),
-                                     ifelse(line[['anathema']], " '", "missing '"),
-                                     line[['msg']], "' in ", line[['file']]))
+                                                   paste0(line[['pts']], " points lost for"))),
+                                     ifelse(line[['anathema']], " code anathema (",
+                                            " missing code ("),
+                                     line[['msg']], ") in '", line[['file']], "'."))
                           })
-        browser()
+        names(problems) = NULL # Needed!!!
         tgs = do.call(shiny::tags$div, problems)
-        tgs = shiny::tags$div(p("Fix server.R at line 730"))
         return(tgs)
       }
     } else if (input$gradeViewChoice == "Output Analysis") {
-      return(p("not yet coded"))
+      varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
+      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+        dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
+        return(p("not viewable"))
+      } else {
+        problems = apply(problems[problems$mention == TRUE, ], 1,
+                         function(line) {
+                           p(paste0(ifelse(line[['pts']] < 0, 
+                                           paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                           ifelse(line[['pts']]==0, "Zero penalty for",
+                                                  paste0(line[['pts']], " points lost for"))),
+                                    ifelse(line[['anathema']], " output anathema (",
+                                           " missing output ("),
+                                    line[['msg']], ") in '", line[['file']], "'."))
+                         })
+        names(problems) = NULL # Needed!!!
+        tgs = do.call(shiny::tags$div, problems)
+        return(tgs)
+      }
     } else if (extension == "html") {
       tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
                         style="width:100%;",
                         id="iframe", height = "500px")
       return(tgs)
     } else {
-      return(p("not yet coded"))
+      text = try(suppressWarnings(readLines(file.path(path, fname))), silent=TRUE)
+      if (is(text, "try-error")) {
+        dualAlert("Grading View Error", paste0(file.path(path, fname), " not readable text"))
+        return(p("not viewable"))
+      } else {
+        tgs = do.call(shiny::tags$pre, as.list(text))
+        return(tgs)
+      }
     }
   })
   
