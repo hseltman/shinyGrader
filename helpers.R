@@ -617,6 +617,11 @@ matchFile = function(fs, studentFiles, otherFiles) {
     return(NULL)
   }
   
+  # Special case of "dir/file" with missing "@"
+  if (length(grep("[{]", fs)) == 0 && dirname(fs) != ".") {
+    fs = paste0("@", fs)
+  }
+  
   # Handle initial character
   first = substring(fs, 1, 1)
   if (first == "@") {
@@ -996,24 +1001,36 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
   # Determine if a new directory is needed
   useLastDir = FALSE
   cfPath = file.path(probFolder, lastDir, "shinyGraderCF.RData")
-  if (lastDir != 0 && !file.exists(cfPath)) {
-    useLastDir = TRUE
-    save(currentFiles, file=file.path(probFolder, lastDir, "shinyGraderCF.RData"))
-  }
-  if (lastDir != 0 && file.exists(cfPath)) {
-    thisCF = currentFiles
-    what = try(suppressWarnings(load(cfPath)), silent=TRUE)
-    if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
-      if (!isTRUE(all.equal(thisCF$runDf$inName, currentFiles$runDf$inName)) ||
-          !isTRUE(all.equal(thisCF$reqDf$inName, currentFiles$reqDf$inName)) ||
-          !isTRUE(all.equal(thisCF$optDf$inName, currentFiles$optDf$inName))) {
-        useLastDir = FALSE
-        currentFiles = thisCF
-      } else {
-        useLastDir = TRUE
-      }
-    }
-  }
+  if (lastDir != 0) {
+    if (!file.exists(cfPath)) {
+      useLastDir = TRUE
+      save(currentFiles, file=file.path(probFolder, lastDir, "shinyGraderCF.RData"))
+    } else {
+      thisCF = currentFiles
+      what = try(suppressWarnings(load(cfPath)), silent=TRUE)
+      if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
+        diffFiles = !isTRUE(all.equal(thisCF$runDf$inName,
+                                      currentFiles$runDf$inName)) ||
+                    !isTRUE(all.equal(thisCF$reqDf$inName,
+                                      currentFiles$reqDf$inName)) ||
+                    !isTRUE(all.equal(thisCF$optDf$inName,
+                                      currentFiles$optDf$inName))
+        files = list.files(file.path(studentEmail, probName, lastDir))
+        startedAnalysis = "codeProblems.RData" %in% files ||
+                          (!is.null(thisCF$runfile) &&
+                            (changeExtension(thisCF$runFile, "html") %in% files ||
+                            changeExtension(thisCF$runFile, "out") %in% files)) ||
+                          "outputProblems.RData" %in% files
+        if (diffFiles && startedAnalysis) {
+          useLastDir = FALSE
+          currentFiles = thisCF
+        } else {
+          useLastDir = TRUE
+        }
+        currentFiles = thisCF # restore!!
+      } # end if succesfully loaded 'currentFiles' from "shinyGraderCF.RData"
+    } # end if "shinyGraderCF.RData" exists
+  } # end if lastDir != 0
   
   # Create new subdirectory if needed
   if (!useLastDir) {
