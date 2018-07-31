@@ -154,18 +154,6 @@ function(input, output, session) {
   # Path for current student
   thisPath = reactiveVal(staticThisPath)
     
-  # Store coding files and allow observers to know when it changes
-  # codingFiles = reactive({
-  #   pf = parsedFiles()
-  #   fileList = c()
-  #   if (!is.null(pf)) {
-  #     temp = pf[tolower(pf$fileExtension) %in% c(".r", ".rmd", ".sas", ".py"), ]
-  #     fileList = apply(temp, 1, function(r) paste0(r["baseFileName"],
-  #                                                  r["fileExtension"]))
-  #   }
-  #   return(unique(fileList))
-  # })
-  
   # Logical reactive values for each rubric's status
   for (problem in 1:PROBLEM_COUNT) {
     eval(parse(text=paste0("rubric", problem, "Dirty = reactiveVal(FALSE)")))
@@ -177,7 +165,8 @@ function(input, output, session) {
 
   # Possible html output
   htmlFile = reactiveVal(NULL)
-    
+
+  
   ########################
   ### Create observers ###
   ########################
@@ -323,13 +312,15 @@ function(input, output, session) {
   observeEvent(activeProblems(), {
     ap = activeProblems()
     if (length(ap) > 0) {
+      choices = paste("Problem", (1:PROBLEM_COUNT)[ap])
       updateRadioButtons(session, "currentProblem",
-                        choices=paste("Problem", (1:PROBLEM_COUNT)[ap]),
+                        choices=choices,
+                        seleced = choices[1],
                         inline=TRUE)
       shinyjs::enable("currentProblem")
     } else {
       updateRadioButtons(session, "currentProblem", choices="Problem 1",
-                         inline=TRUE)
+                         selected="Problem 1", inline=TRUE)
       # Note: it seems disable does not work for length(choices)==1
       shinyjs::disable("currentProblem")
     }
@@ -390,6 +381,7 @@ function(input, output, session) {
       }
     }
     thisPath(path)
+    freezeReactiveValue(input, "gradeViewChoice")
     updateGradeViewChoice(cf, path)
   }, ignoreInit=TRUE)
 
@@ -486,12 +478,12 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      updateRadioButtons("gradeViewChoice", choices="(none)")
+      updateRadioButtons("gradeViewChoice", choices="(none)", selected="(none)")
     } else {
       runFile = currentFiles$runDf$outName
       files = c(runFile,
-                currentFiles$reqDf$outName,
-                currentFiles$optDf$outName)
+                currentFiles$reqDf$outName[currentFiles$reqDf$directory == "."],
+                currentFiles$optDf$outName[currentFiles$reqDf$directory == "."])
       if (file.exists(file.path(path, "codeProblems.RData"))) {
         files = c(files, "Code Analysis")
       }
@@ -510,7 +502,8 @@ function(input, output, session) {
         files = c(files, "Output Analysis")
       }
       if (is.null(files)) files = "(none)"
-      updateRadioButtons(session, "gradeViewChoice", choices=files, inline=TRUE)
+      updateRadioButtons(session, "gradeViewChoice", choices=files, 
+                         selected = files[1], inline=TRUE)
     }
   }
   
@@ -588,6 +581,7 @@ function(input, output, session) {
       } else {
         htmlFile(NULL)
       }
+      updateGradeViewChoice(cf, path)
       print(file.info(file.path(path, outFile)))
     }
   }, ignoreInit=TRUE)
@@ -601,6 +595,7 @@ function(input, output, session) {
     rubric = rubrics()[[probNum]]
     co = checkOutput(path, cf, rubric)
     if (!is.null(co)) shinyjs::disable("analyzeOutput")
+    updateGradeViewChoice(cf, path)
     print(co)
   }, ignoreInit=TRUE)
 
@@ -679,16 +674,6 @@ function(input, output, session) {
     }
   })
 
-  # Include html output on Grading page
-  # Note: this depends on "addResourcePath("shinyGrader", getwd())"
-  # output$inc = renderUI({
-  #   validate(need(htmlFile(), "No html output available"))
-  #   tgs = tags$iframe(src = paste0("/shinyGrader/", htmlFile()),
-  #                     style="width:100%;",
-  #                     id="iframe", height = "500px")
-  #   return(tgs)
-  # })
-
   output$canvasFiles = renderPrint({
     cf = allFiles()$Canvas$submitName
     if (length(cf) == 0) {
@@ -759,6 +744,7 @@ function(input, output, session) {
         return(tgs)
       }
     } else if (extension == "html") {
+      # Note: this depends on "addResourcePath("shinyGrader", getwd())"
       tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
                         style="width:100%;",
                         id="iframe", height = "500px")
@@ -773,6 +759,6 @@ function(input, output, session) {
         return(tgs)
       }
     }
-  })
+  }) # end render "gradeViewOutput"
   
 } # end server function
