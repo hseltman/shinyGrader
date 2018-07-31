@@ -1420,7 +1420,7 @@ runR = function(runFile) {
   outFile = changeExtension(runFile, "out")
   args = paste("CMD BATCH --no-restore --no-save --quiet", runFile,
                outFile)
-  exitCode = try(system2("R", args, invisible=FALSE), silent=TRUE)
+  exitCode = try(system2("R", args), silent=TRUE)
   if (is(exitCode, "try-error")) {
     return(FALSE)
   }
@@ -1440,7 +1440,7 @@ runRmd = function(runFile) {
                  'output="', outFile, '")')),
         file="runRmd.R")
   args = "CMD BATCH --no-restore --no-save --quiet runRmd.R runRmd.out"
-  exitCode = try(system2("R", args, invisible=FALSE), silent=TRUE)
+  exitCode = try(system2("R", args), silent=TRUE)
   if (is(exitCode, "try-error")) {
     return(FALSE)
   }
@@ -1454,7 +1454,7 @@ runRmd = function(runFile) {
 runPy = function(runFile) {
   outFile = changeExtension(runFile, "out")
   exitCode = try(system2("python", stdin=runFile, stdout=outFile,
-                         stderr=changeExtension(runFile, "err"), invisible=FALSE),
+                         stderr=changeExtension(runFile, "err")),
                  silent=TRUE)
   if (is(exitCode, "try-error")) {
     return(FALSE)
@@ -1472,7 +1472,7 @@ runSas = function(runFile) {
   args = paste0("-SYSIN '", runFile,  "' -ICON -NOSPLASH -NONEWS -LOG '",
                 changeExtension(runFile, "log"), "' -PRINT '",
                 changeExtension(runFile, "lst"), "'")
-  exitCode = try(system2(SasProg, args, invisible=FALSE), silent=TRUE)
+  exitCode = try(system2(SasProg, args), silent=TRUE)
   if (is(exitCode, "try-error")) {
     return(FALSE)
   }
