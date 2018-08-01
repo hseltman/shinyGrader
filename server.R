@@ -558,6 +558,7 @@ function(input, output, session) {
       updateGradeViewChoice(cf, path)
     }
     print(cc)
+    print(attr(cc, "extra"))
   }, ignoreInit=TRUE)
     
   # Run one student's code
@@ -709,19 +710,23 @@ function(input, output, session) {
         dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
         return(p("not viewable"))
       } else {
-        problems = apply(problems[problems$mention == TRUE, ], 1,
-                          function(line) {
-                            p(paste0(ifelse(line[['pts']] < 0, 
-                                            paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                            ifelse(line[['pts']]==0, "Zero penalty for",
-                                                   paste0(line[['pts']], " points lost for"))),
-                                     ifelse(line[['anathema']], " code anathema (",
-                                            " missing code ("),
-                                     line[['msg']], ") in '", line[['file']], "'."))
-                          })
-        names(problems) = NULL # Needed!!!
-        tgs = do.call(shiny::tags$div, problems)
-        return(tgs)
+        if (sum(problems$mention) == 0) {
+          return(p("All good (nothing to mention)"))
+        } else {
+          problems = apply(problems[problems$mention == TRUE, ], 1,
+                           function(line) {
+                             p(paste0(ifelse(line[['pts']] < 0, 
+                                             paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                             ifelse(line[['pts']]==0, "Zero penalty for",
+                                                    paste0(line[['pts']], " points lost for"))),
+                                      ifelse(line[['anathema']], " code anathema (",
+                                             " missing code ("),
+                                      line[['msg']], ") in '", line[['file']], "'."))
+                           })
+          names(problems) = NULL # Needed!!!
+          tgs = do.call(shiny::tags$div, problems)
+          return(tgs)
+        }
       }
     } else if (input$gradeViewChoice == "Output Analysis") {
       varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)

@@ -1239,8 +1239,24 @@ splitCodeRubric = function(spec) {
   return(rtn)
 }
 
-# Check code
+# Check code (required, anathema, blanks, comments)
+# 
+# INPUT:
+#   path: relative location of sandbox
+#   cf: current files (see findCurrentFiles())
+#   rubric: full grading rubric (see getProblemTabs.R)
+#
+# OUTPUT:
+#   A "problems" data.frame with columns for file, pts,
+#     msg, pattern, fixed, found, badRE, anatmea, mention,
+#     and dock.  The 'extra' attribute has additional code
+#     information in the from of a table with columns for each 
+#     code file and rows for "blanks" and "comments".
+#
+# SIDE EFFECTS:
+#   output object is stored in codeProblems.RData
 checkCode = function(path, cf, rubric) {
+  # Split rubric code requirements and anathemas by code file
   inputReq = splitCodeRubric(rubric$inputReq)
   inputAnath = splitCodeRubric(rubric$inputAnath)
   if(length(cf$runMissing) == 0) {
@@ -1271,12 +1287,15 @@ checkCode = function(path, cf, rubric) {
     }
   }
 
+  # Setup for analyis by code file
   allSectionNames = unique(c(names(inputReq), names(inputAnath)))
   allCodeNames = c(runName, cf$reqDf$outName[cf$reqDf$canvasFlag])
   if (length(cf$reqMissing) > 0) {
     cleanNames = gsub("(.*)([{]{2}.+[}]{2})", "\\1", cf$reqMissing)
     allCodeNames = c(allCodeNames, cleanNames)
   }
+  
+  # Check that rubric refers only to files for this problem
   secNotInCode = allSectionNames %in% allCodeNames == FALSE
   if (any(secNotInCode)) {
     badSecs = allSectionNames[secNotInCode]
@@ -1290,11 +1309,13 @@ checkCode = function(path, cf, rubric) {
     if (length(inputAnath) == 0) inputAnath = NULL
   }
   
+  # Setup to analyze anathemas and requirements in (nearly) the same way
   nReq = length(inputReq)
   nAnath = length(inputAnath)
   fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
   both = c(inputReq, inputAnath)
-  # Get a list of data.frames of specification results, one per combo of file and Req vs. Anath
+  # Get a list of data.frames of specification results, one per combo
+  # of file and Req vs. Anath
   if (all(sapply(both, function(x) length(x)==0))) {
     return(NULL)
   }
@@ -1312,16 +1333,56 @@ checkCode = function(path, cf, rubric) {
       }
       dtf = testSpecs(specs, txt)
       
-      if (!is.null(dtf)) dtf = cbind(file=file, dtf, anathema=anathema)
+      # Count blanks and comments
+      if (!is.null(dtf)) {
+        dtf = cbind(file=file, dtf, anathema=anathema, fileFound)
+        if (fileFound) {
+          attr(dtf, file) = c(blanks=length(grep("^[[:blank:]]*$", txt)))
+          ext = tolower(gsub("(.*)([.])(.*)", "\\3", file))
+          if (ext %in% c("r", "py")) {
+            commentCnt = length(grep("^[[:blank:]]*[#][[:blank:]]*[^[:blank:]]+$",
+                                     txt))
+          } else if (ext == "rmd") {
+            commentCnt = NA
+          } else if (ext == "sas") {
+            commentCnt = length(grep("^[[:blank:]]*[/][*]", txt))
+          } else {
+            commentCnt = 0
+            dualAlert("Not yet programmed",
+                      paste0("No comment count code for ", ext))
+          }
+          attr(dtf, file) = c(blanks=length(grep("^[[:blank:]]*$", txt)),
+                              comments=commentCnt)
+        } else {
+          attr(dtf, file) = c(blanks=0, comments=0)
+        }
+      }
       
       return(dtf)
     }
   )
-  
+
+  # Compute extra information on number of blanks and comments
+  extra = lapply(codeProblems,
+                 function(dtf) {
+                   x = attributes(dtf)
+                   x = x[ ! names(x) %in% c("names", "class", "row.names")]
+                   return(x)
+                 })
+  enames = lapply(extra, names)
+  isNull = sapply(enames, is.null)
+  extra = sapply(extra[!isNull], "[[", i=1)
+  colnames(extra) = enames[!isNull]
+  extra = extra[, ! duplicated(enames), drop=FALSE]
+
+  # Compute additonal information
   problems = do.call(rbind, codeProblems)
   problems$mention = (problems$found == problems$anathema)  & !problems$badRE
   problems$dock = 0
   problems$dock[problems$mention] = problems$pts[problems$mention]
+  
+  # Store 'extra' as an attribute
+  attr(problems, "extra") = extra
   
   # Both save and return the final data.frame
   save(problems, file=file.path(path, "codeProblems.RData"))
