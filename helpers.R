@@ -1,5 +1,5 @@
 # helper functions for shinyGrader
-# H. Seltman, June 2018
+# H. Seltman, August 2018
 
 # Functions in this file:
 #   textToConfigList()

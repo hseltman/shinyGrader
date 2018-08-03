@@ -1,5 +1,5 @@
 # Read environmental variables and setup files for shinyGrader
-# H. Seltman, Jun 2018
+# H. Seltman, August 2018
 
 # Global file for shinyGrader app
 

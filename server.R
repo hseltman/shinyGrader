@@ -1,4 +1,4 @@
-# H. Seltman, Jan 2018
+# H. Seltman, August 2018
 
 # Server file for shinyGrader app
 
