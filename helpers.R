@@ -2,7 +2,6 @@
 # H. Seltman, June 2018
 
 # Functions in this file:
-#   getCurrentProblem()
 #   textToConfigList()
 #   writeConfig()
 #   updateStatus()
@@ -932,12 +931,6 @@ dualAlert = function(title, msg) {
     warning(title, ": ", msg)
   }
   invisible(NULL)
-}
-
-
-# get current problem from "Problem #" text of "input$currentProblem"
-getCurrentProblem = function(probString) {
-  return(as.numeric(substring(probString, 9)))
 }
 
 

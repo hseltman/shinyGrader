@@ -312,14 +312,16 @@ function(input, output, session) {
   observeEvent(activeProblems(), {
     ap = activeProblems()
     if (length(ap) > 0) {
-      choices = paste("Problem", (1:PROBLEM_COUNT)[ap])
+      choices = as.character((1:PROBLEM_COUNT)[ap])
       updateRadioButtons(session, "currentProblem",
-                        choices=choices,
-                        seleced = choices[1],
+                        choiceNames=paste("Problem", choices),
+                        choiceValues=choices,
+                        selected = choices[1],
                         inline=TRUE)
       shinyjs::enable("currentProblem")
     } else {
-      updateRadioButtons(session, "currentProblem", choices="Problem 1",
+      updateRadioButtons(session, "currentProblem", choiceNames="Problem 1",
+                         choiceValues="1",
                          selected="Problem 1", inline=TRUE)
       # Note: it seems disable does not work for length(choices)==1
       shinyjs::disable("currentProblem")
@@ -335,7 +337,7 @@ function(input, output, session) {
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       currentFiles(NULL)
     } else {
-      probNum = getCurrentProblem(input$currentProblem)
+      probNum = as.numeric(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
       cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
       currentFiles(cf)
@@ -346,7 +348,7 @@ function(input, output, session) {
   # Note roster$serialNum->input$selectStudent
   observeEvent(c(input$selectStudent, input$currentProblem), {
     rubNow = rubrics()
-    probNum = getCurrentProblem(input$currentProblem)
+    probNum = as.numeric(input$currentProblem)
     id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
     cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
     currentFiles(cf)
@@ -445,7 +447,7 @@ function(input, output, session) {
     
     if (this == "Grading") {
       rubNow = rubrics()
-      probNum = getCurrentProblem(input$currentProblem)
+      probNum = as.numeric(input$currentProblem)
       id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
       cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
       studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
@@ -478,7 +480,8 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      updateRadioButtons("gradeViewChoice", choices="(none)", selected="(none)")
+      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="",
+                         selected="")
     } else {
       runFile = currentFiles$runDf$outName
       files = c(runFile,
@@ -550,7 +553,7 @@ function(input, output, session) {
     req(thisPath(), currentFiles())
     path = thisPath()
     cf = currentFiles()
-    probNum = getCurrentProblem(input$currentProblem)
+    probNum = as.numeric(input$currentProblem)
     rubric = rubrics()[[probNum]]
     cc = checkCode(path, cf, rubric)
     if (!is.null(cc)) {
@@ -568,7 +571,7 @@ function(input, output, session) {
     cf = currentFiles()
     studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
     studentEmail = studentInfo["email"]
-    probNum = getCurrentProblem(input$currentProblem)
+    probNum = as.numeric(input$currentProblem)
     rubric = rubrics()[[probNum]]
     rtn = runCode(path, cf$runDf$outName)
     if (rtn) {
@@ -592,7 +595,7 @@ function(input, output, session) {
     req(thisPath(), currentFiles())
     path = thisPath()
     cf = currentFiles()
-    probNum = getCurrentProblem(input$currentProblem)
+    probNum = as.numeric(input$currentProblem)
     rubric = rubrics()[[probNum]]
     co = checkOutput(path, cf, rubric)
     if (!is.null(co)) shinyjs::disable("analyzeOutput")

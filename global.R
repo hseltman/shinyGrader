@@ -62,9 +62,10 @@ if (is.null(staticRoster)) {
 staticRubrics = getRubrics()
 staticActiveProblems = which(sapply(staticRubrics, isProblemActive))
 if (length(staticActiveProblems) > 0) {
-  staticCurrentProblem = paste("Problem", (1:PROBLEM_COUNT)[staticActiveProblems])
+  staticCurrentProblem = as.character((1:PROBLEM_COUNT)[staticActiveProblems])
+  names(staticCurrentProblem) = paste("Problem", (1:PROBLEM_COUNT)[staticActiveProblems])
 } else {
-  staticCurrentProblem = "Problem 1"
+  staticCurrentProblem = c("Problem 1"="1")
 }
 
 
