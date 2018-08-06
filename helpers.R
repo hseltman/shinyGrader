@@ -1677,3 +1677,37 @@ checkEnables = function(path, cf, probNum) {
            runCode=runCode,
            analyzeOutput=analyzeOutput))
 }
+
+
+
+## Code analysis to tags
+codeAnalysisToTags = function(path, fname) {
+  varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
+  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+    dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
+    tgs = p("not viewable")
+    attr(tgs, "dock") = NA
+    return(tgs)
+  } else {
+    if (sum(problems$mention) == 0) {
+      tgs = p("All good (nothing to mention)")
+      attr(tgs, "dock") = sum(problems$dock)
+      return(tgs)
+    } else {
+      probTags = apply(problems[problems$mention == TRUE, ], 1,
+                       function(line) {
+                         p(paste0(ifelse(line[['pts']] < 0, 
+                                         paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                         ifelse(line[['pts']]==0, "Zero penalty for",
+                                                paste0(line[['pts']], " points lost for"))),
+                                  ifelse(line[['anathema']], " code anathema (",
+                                         " missing code ("),
+                                  line[['msg']], ") in '", line[['file']], "'."))
+                       })
+      names(probTags) = NULL # Needed!!!
+      tgs = do.call(shiny::tags$div, probTags)
+      attr(tgs, "dock") = sum(problems$dock)
+      return(tgs)
+    }
+  }
+}
