@@ -922,10 +922,10 @@ dualAlert = function(title, msg) {
   #inSession = exists("session", env=parent.env(parent.frame())) &&
   #  is(get("session", env=parent.env(parent.frame())), "ShinySession")
   
-  inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
-              get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
+  # inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
+  #             get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
   
-  if (inSession) {
+  if (isRunning()) {
     shinyalert(title, msg, type = "warning")
   } else {
     warning(title, ": ", msg)
@@ -1709,5 +1709,32 @@ codeAnalysisToTags = function(path, fname) {
       attr(tgs, "dock") = sum(problems$dock)
       return(tgs)
     }
+  }
+}
+
+
+## Output analysis to tags
+outputAnalysisToTags = function(path, fname) {
+  varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
+  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+    dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
+    tgs = p("not viewable")
+    attr(tgs, "dock") = NA
+    return()
+  } else {
+    probTags = apply(problems[problems$mention == TRUE, ], 1,
+                     function(line) {
+                       p(paste0(ifelse(line[['pts']] < 0, 
+                                       paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                       ifelse(line[['pts']]==0, "Zero penalty for",
+                                              paste0(line[['pts']], " points lost for"))),
+                                ifelse(line[['anathema']], " output anathema (",
+                                       " missing output ("),
+                                line[['msg']], ") in '", line[['file']], "'."))
+                     })
+    names(probTags) = NULL # Needed!!!
+    tgs = do.call(shiny::tags$div, probTags)
+    attr(tgs, "dock") = sum(problems$dock)
+    return(tgs)
   }
 }

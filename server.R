@@ -711,25 +711,8 @@ function(input, output, session) {
       tgs = codeAnalysisToTags(path, fname)
       return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (input$gradeViewChoice == "Output Analysis") {
-      varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
-      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
-        dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
-        return(p("not viewable"))
-      } else {
-        problems = apply(problems[problems$mention == TRUE, ], 1,
-                         function(line) {
-                           p(paste0(ifelse(line[['pts']] < 0, 
-                                           paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                           ifelse(line[['pts']]==0, "Zero penalty for",
-                                                  paste0(line[['pts']], " points lost for"))),
-                                    ifelse(line[['anathema']], " output anathema (",
-                                           " missing output ("),
-                                    line[['msg']], ") in '", line[['file']], "'."))
-                         })
-        names(problems) = NULL # Needed!!!
-        tgs = do.call(shiny::tags$div, problems)
-        return(tgs)
-      }
+      tgs = outputAnalysisToTags(path, fname)
+      return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (extension == "html") {
       # Note: this depends on "addResourcePath("shinyGrader", getwd())"
       tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
@@ -745,7 +728,7 @@ function(input, output, session) {
         tgs = do.call(shiny::tags$pre, as.list(text))
         return(tgs)
       }
-    }
+    } # end codeAnalysis vs. outputAnalysis vs. html vs. plain text
   }) # end render "gradeViewOutput"
   
 } # end server function
