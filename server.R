@@ -575,6 +575,53 @@ function(input, output, session) {
     print(co)
   }, ignoreInit=TRUE)
 
+  # Run all students
+  observeEvent(input$runAllStudents, {
+    probNum = as.numeric(input$currentProblem)
+    rubNow = rubrics()[[probNum]]
+    rostNow = roster$roster
+    for (studNum in 1:nrow(rostNow)) {
+      studInfo = rostNow[studNum, ]
+      cf = findCurrentFiles(studInfo$ID, allFiles(), rubNow)
+      path = setupSandbox(studInfo$shortEmail, cf, probNum)
+
+      # Check code
+      cc = checkCode(path, cf, rubNow)
+      print(cc)
+      print(attr(cc, "extra"))
+      
+      # Run code
+      if (is.null(cc) || is.null(cf$runDf$outName)) {
+        #browser()
+        rc = FALSE
+      } else {
+        rc = runCode(path, cf$runDf$outName)
+      }
+      
+      if (rc) {
+        outFile = attr(rc, "outFile")
+        exitCode = attr(rc, "exitCode")
+        if (substring(outFile, nchar(outFile) - 3) == "html") {
+          htmlName = file.path(path, outFile)
+          htmlFile(htmlName)
+        } else {
+          htmlFile(NULL)
+        }
+        print(file.info(file.path(path, outFile)))
+      }
+      
+      # Check output
+      #if (studInfo$shortEmail == "lisac1") browser()
+      browser()
+      if (rc) {
+        co = checkOutput(path, cf, rubNow)
+        print(co)
+      }
+    } # end for each student
+  }) # end observe runAllStudents
+  
+  
+  
   # Save default rubrics  
   for (probNum in 1:PROBLEM_COUNT) {
     eval(parse(text=c(paste0("observeEvent(input$saveRubric", probNum, "AsDefault, {"),
