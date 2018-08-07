@@ -125,16 +125,7 @@ function(input, output, session) {
   roster$roster = staticRoster
   roster$serialNum = 0
   
-  # Store student "name (email)" and allow observers to know when it changes
-  if (is.null(staticRoster)) {
-    browser()
-  } else {
-    shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
-    students = reactiveVal(paste0(staticRoster[["Name"]],
-                                  " (", staticRoster[["CanvasName"]],
-                                  "; ", shortEmail, ")"))
-  }
-  
+
   # Store rubrics and allow observers to know when they change
   rubrics = reactiveVal(staticRubrics)
   
@@ -201,35 +192,19 @@ function(input, output, session) {
         # Update Assignment tab to show this roster's location
         
       }
+
+      choices = as.character(1:nrow(newRoster))
+      names(choices) = newRoster$selectText
+      updateSelectInput(session, "selectStudent", 
+                        label=paste(length(st) - 1, "Students (Canvas name; email)"),
+                        choices=choices)
       
       # Let the app know that there is a new roster
       roster$roster = newRoster
       roster$serialNum = roster$serialNum + 1
     }
   }, ignoreInit=TRUE)
-  
-  # Handle new roster
-  observeEvent(roster$serialNum, {
-    if (is.null(roster$roster)) {
-      browser()
-    } else {
-      rost = roster$roster
-      shinyjs::html(id="currentRoster", 
-                    paste0("<strong>", rosterFileName(), " (",
-                           nrow(rost) - 1, " students)</strong>"))
-      shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
-      students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
-                      "; ", shortEmail, ")"))
-    }
-  }, ignoreNULL=FALSE)
-  
-  observeEvent(students(), {
-    st = students()
-    updateSelectInput(session, "selectStudent", 
-                      label=paste(length(st) - 1, "Students (Canvas name; email)"),
-                      choices=st, selected=st[1])
-  })
-  
+
   
   observeEvent(input$changeFolder, {
     f = try(file.choose(), silent=TRUE)
@@ -338,8 +313,8 @@ function(input, output, session) {
       currentFiles(NULL)
     } else {
       probNum = as.numeric(input$currentProblem)
-      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
+      studentInfo = roster$roster[as.numeric(input$selectStudent), ]
+      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
       currentFiles(cf)
     }
   }, ignoreInit=TRUE)
@@ -349,10 +324,13 @@ function(input, output, session) {
   observeEvent(c(input$selectStudent, input$currentProblem), {
     rubNow = rubrics()
     probNum = as.numeric(input$currentProblem)
-    id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-    cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
+    rostNow = roster$roster
+    studentInfo = rostNow[as.numeric(input$selectStudent), ]
+    
+    cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
     currentFiles(cf)
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+      browser()
       currentFiles(NULL)
       path = NULL
       shinyjs::disable("analyzeCode")
@@ -360,9 +338,7 @@ function(input, output, session) {
       shinyjs::disable("analyzeOutput")
       htmlFile(NULL)
     } else {
-      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-      studentEmail = studentInfo["email"]
-      path = setupSandbox(studentEmail, cf, probNum)
+      path = setupSandbox(studentInfo$shortEmail, cf, probNum)
       shinyjs::html(id="sandboxVersion", 
                     paste("<strong>Version =", basename(path), "</strong>"))
       checks = checkEnables(path, cf, probNum)
@@ -394,8 +370,8 @@ function(input, output, session) {
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
-    studentEmail = selectStudentInfo(input$selectStudent, roster$roster)["email"]
-    
+    studentInfo = roster$roster[as.numeric(input$selectStudent), ]
+
     if (last == "Problems") {
       isDirty = sapply(1:PROBLEM_COUNT,
                        function(p) eval(parse(text=paste0("rubric", p, "Dirty()"))))
@@ -448,20 +424,17 @@ function(input, output, session) {
     if (this == "Grading") {
       rubNow = rubrics()
       probNum = as.numeric(input$currentProblem)
-      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
-      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-      studentEmail = studentInfo["email"]
+      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
-        path = setupSandbox(studentEmail, cf, probNum)
+        path = setupSandbox(studentInfo$shortEmail, cf, probNum)
         thisPath(path)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
       } else {
         currentFiles(cf)
-        path = setupSandbox(studentEmail, cf, probNum)
+        path = setupSandbox(studentInfo$shortEmail, cf, probNum)
         thisPath(path)
         checks = checkEnables(path, cf, probNum)
         # Note: 'condition' cannot have names
@@ -569,8 +542,7 @@ function(input, output, session) {
     req(thisPath(), currentFiles(), roster$roster)
     path = thisPath()
     cf = currentFiles()
-    studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-    studentEmail = studentInfo["email"]
+    #studentInfo = roster$roster[as.numeric(input$selectStudent), ]
     probNum = as.numeric(input$currentProblem)
     rubric = rubrics()[[probNum]]
     rtn = runCode(path, cf$runDf$outName)
@@ -612,7 +584,28 @@ function(input, output, session) {
   }
   rm(probNum)
   
-    
+  # input$selectStudent's next and prior buttons
+  observeEvent(input$priorStudent, {
+    stNum = as.numeric(input$selectStudent)
+    if (stNum > 1) {
+      updateSelectInput(session, "selectStudent", selected=as.character(stNum - 1))
+    }
+    shinyjs::toggleState("priorStudent", condition=(stNum > 1))
+  }, ignoreInit=TRUE)
+  
+  observeEvent(input$nextStudent, {
+    N = nrow(roster$roster)
+    stNum = as.numeric(input$selectStudent)
+    if (stNum < N) {
+      updateSelectInput(session, "selectStudent", selected=as.character(stNum + 1))
+    }
+    shinyjs::toggleState("mextStudent", condition=(stNum < N))
+  }, ignoreInit=TRUE)
+  
+  
+  
+  
+  
   #########################
   ### Create renderings ###
   #########################
