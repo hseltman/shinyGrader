@@ -24,6 +24,7 @@
 #   parseSpec()
 #   runCode()
 #   checkEnables()
+#   collectErrors()
 
 # Convert a special kind of text file into a named list.
 #
@@ -1723,4 +1724,82 @@ outputAnalysisToTags = function(path, fname) {
     attr(tgs, "dock") = sum(problems$dock)
     return(tgs)
   }
+}
+
+
+# Un-escape HTML
+# https://stackoverflow.com/questions/5060076/convert-html-character-entity-encoding-in-r
+unescape_html <- function(str){
+  xml2::xml_text(xml2::read_html(paste0("<x>", str, "</x>")))
+}
+
+# Collect errors and warnings for R output
+collectErrorsR = function(text, ignore=NULL) {
+  
+}
+
+# Collect errors and warnings for Rmd output
+collectErrorsRmd = function(text, ignore=NULL) {
+  startAll = grep("^<pre><code", text)
+  stopAll = grep("^</code></pre>", text)
+  if (length(stopAll) != length(startAll)) {
+    msg = "garbled html"
+    attr(msg, "dock") = NA
+    return(msg)
+  }
+  startErr = grep("^<pre><code>## Error", text)
+  startWarn = grep("^<pre><code>## Warning", text)
+  info = data.frame(start=startAll, stop=stopAll, warn=FALSE, err=FALSE,
+                    message=I(NA_character_),
+                    causeN=NA_integer_, cause=I(NA_character_))
+  info$warn[info$start %in% startWarn] = TRUE
+  info$err[info$start %in% startErr] = TRUE
+  info$causeN[info$warn] = which(info$warn) - 1
+  info$causeN[info$err] = which(info$err) - 1
+  # If Error immediately follows Warning, the cause of the error
+  # is one prior
+  temp = which(info$warn)
+  info$causeN[info$err][info$causeN[info$err] %in% temp] = 
+    info$causeN[info$err][info$causeN[info$err] %in% temp] - 1
+  
+  nErr = sum(info$err)
+  nWarn = sum(info$warn)
+  if (nErr + nWarn == 0) {
+    msg = "all OK"
+    attr(msg, "dock") = 0
+    return(msg)
+  }
+  stopAll = grep("^</code></pre>", text)
+  stopErr = sapply(startErr,
+                   function(start) {
+                     stop = stopAll[stopAll > start]
+                     if (length(stop) == 0) return(NA)
+                     return(stop[1])
+                   })
+
+  EW = info$err | info$warn
+  info$message[EW] = apply(info[EW, ], 1,
+                           function(row) {
+                             msg = paste(text[as.numeric(row["start"]):
+                                              as.numeric(row["stop"])],
+                                         collapse=" ")
+                             return(substring(unescape_html(msg), 4))
+                           })
+
+  info$cause[EW] = sapply(info[EW, "causeN"],
+                         function(n) {
+                           row = info[n, ]
+                           cause = paste(text[as.numeric(row["start"]):
+                                              as.numeric(row["stop"])],
+                                          collapse="\n")
+                           cause = unescape_html(cause)
+                           #browser()
+                           closest = try(suppressWarnings(parse(text=cause)), silent=TRUE)
+                           if (!is(closest, "try-error") && length(closest) > 0)
+                             cause = as.character(closest[length(closest)])
+                           return(cause)
+                         })
+  info = info[EW, ]
+  info$dock = 222
+  return(info)
 }
