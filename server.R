@@ -7,7 +7,7 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
-  addResourcePath("shinyGrader", getwd())
+  addResourcePath("shinyGrader", path.expand("~"))
   
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
@@ -196,7 +196,7 @@ function(input, output, session) {
       choices = as.character(1:nrow(newRoster))
       names(choices) = newRoster$selectText
       updateSelectInput(session, "selectStudent", 
-                        label=paste(length(st) - 1, "Students (Canvas name; email)"),
+                        label=paste(length(choices) - 1, "Students (Canvas name; email)"),
                         choices=choices)
       
       # Let the app know that there is a new roster
@@ -754,9 +754,11 @@ function(input, output, session) {
       tgs = outputAnalysisToTags(path, fname)
       return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (extension == "html") {
-      # Note: this depends on "addResourcePath("shinyGrader", getwd())"
-      tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
-                        style="width:100%;",
+      # Note: this depends on "addResourcePath("shinyGrader", wd())"
+      tgs = tags$iframe(src = file.path("/shinyGrader", 
+                                        substring(wd(), nchar(path.expand("~")) + 2),
+                                        path, fname),
+                                          style="width:100%;",
                         id="iframe", height = "500px")
       return(tgs)
     } else {
