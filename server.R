@@ -157,6 +157,12 @@ function(input, output, session) {
   # Possible html output
   htmlFile = reactiveVal(NULL)
 
+  # Current input$gradeViewChoices is more up-to-date than
+  # input$gradeViewChoices when updateRadioButtons() is used
+  # for "gradeViewChoices".  This is needed to make the
+  # render work for "gradeViewOutput" after updating "gradeViewChoices".
+  currentGradeViewChoices = reactiveVal("(none)")
+  
   
   ########################
   ### Create observers ###
@@ -358,8 +364,8 @@ function(input, output, session) {
         }
       }
     }
+
     thisPath(path)
-    freezeReactiveValue(input, "gradeViewChoice")
     updateGradeViewChoice(cf, path)
   }, ignoreInit=TRUE)
 
@@ -453,7 +459,8 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="",
+      browser()
+      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="(none)",
                          selected="")
     } else {
       runFile = currentFiles$runDf$outName
@@ -478,6 +485,7 @@ function(input, output, session) {
         files = c(files, "Output Analysis")
       }
       if (is.null(files)) files = "(none)"
+      currentGradeViewChoices(files)
       updateRadioButtons(session, "gradeViewChoice", choices=files, 
                          selected = files[1], inline=TRUE)
     }
@@ -592,7 +600,6 @@ function(input, output, session) {
       
       # Run code
       if (is.null(cc) || is.null(cf$runDf$outName)) {
-        #browser()
         rc = FALSE
       } else {
         rc = runCode(path, cf$runDf$outName)
@@ -611,8 +618,6 @@ function(input, output, session) {
       }
       
       # Check output
-      #if (studInfo$shortEmail == "lisac1") browser()
-      browser()
       if (rc) {
         co = checkOutput(path, cf, rubNow)
         print(co)
@@ -635,6 +640,7 @@ function(input, output, session) {
   observeEvent(input$priorStudent, {
     stNum = as.numeric(input$selectStudent)
     if (stNum > 1) {
+      #freezeReactiveVal(thisPath)
       updateSelectInput(session, "selectStudent", selected=as.character(stNum - 1))
     }
     shinyjs::toggleState("priorStudent", condition=(stNum > 1))
@@ -644,9 +650,11 @@ function(input, output, session) {
     N = nrow(roster$roster)
     stNum = as.numeric(input$selectStudent)
     if (stNum < N) {
+      #freezeReactiveVal(thisPath)
+      #freezeReactiveValue(input, "selectStudent")
       updateSelectInput(session, "selectStudent", selected=as.character(stNum + 1))
     }
-    shinyjs::toggleState("mextStudent", condition=(stNum < N))
+    shinyjs::toggleState("nextStudent", condition=(stNum < N))
   }, ignoreInit=TRUE)
   
   
@@ -743,28 +751,30 @@ function(input, output, session) {
     
   # View files in "Grader" tab
   output$gradeViewOutput = renderUI({
-    validate(need(input$gradeViewChoice != "(none)", "Nothing to view"))
-    fname = input$gradeViewChoice
-    extension = gsub("(.*)([.])(.*)", "\\3", fname)
     path = thisPath()
-    if (input$gradeViewChoice == "Code Analysis") {
-      tgs = codeAnalysisToTags(path, fname)
+    cgvc = currentGradeViewChoices()
+    what = input$gradeViewChoice
+    if (! what %in% cgvc) what = cgvc[1]
+    validate(need(what != "(none)", "(nothing to view)"))
+    extension = gsub("(.*)([.])(.*)", "\\3", what)
+    if (what == "Code Analysis") {
+      tgs = codeAnalysisToTags(path, what)
       return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
-    } else if (input$gradeViewChoice == "Output Analysis") {
-      tgs = outputAnalysisToTags(path, fname)
+    } else if (what == "Output Analysis") {
+      tgs = outputAnalysisToTags(path, what)
       return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (extension == "html") {
-      # Note: this depends on "addResourcePath("shinyGrader", wd())"
+      # Note: this depends on "addResourcePath("shinyGrader", file.expand("~"))
       tgs = tags$iframe(src = file.path("/shinyGrader", 
                                         substring(wd(), nchar(path.expand("~")) + 2),
-                                        path, fname),
+                                        path, what),
                                           style="width:100%;",
                         id="iframe", height = "500px")
       return(tgs)
     } else {
-      text = try(suppressWarnings(readLines(file.path(path, fname))), silent=TRUE)
+      text = try(suppressWarnings(readLines(file.path(path, what))), silent=TRUE)
       if (is(text, "try-error")) {
-        dualAlert("Grading View Error", paste0(file.path(path, fname), " not readable text"))
+        dualAlert("Grading View Error", paste0(file.path(path, what), " not readable text"))
         return(p("not viewable"))
       } else {
         tgs = do.call(shiny::tags$pre, as.list(text))
