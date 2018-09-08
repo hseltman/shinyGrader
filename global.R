@@ -62,7 +62,7 @@ if (is.null(staticRoster)) {
   staticRoster = fake
 }
 
-staticSelectStudent = as.character(1:length(staticSelectStudent))
+staticSelectStudent = as.character(1:length(staticRoster$selectText))
 names(staticSelectStudent) = staticRoster$selectText
 
 # else {
