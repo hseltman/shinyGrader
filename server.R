@@ -486,7 +486,7 @@ function(input, output, session) {
       runFile = currentFiles$runDf$outName
       files = c(runFile,
                 currentFiles$reqDf$outName[currentFiles$reqDf$directory == "."],
-                currentFiles$optDf$outName[currentFiles$reqDf$directory == "."])
+                currentFiles$optDf$outName[currentFiles$optDf$directory == "."])
       if (file.exists(file.path(path, "codeProblems.RData"))) {
         files = c(files, "Code Analysis")
       }
