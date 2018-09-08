@@ -7,7 +7,7 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
-  addResourcePath("shinyGrader", path.expand("~"))
+  addResourcePath("shinyGrader", getwd())
   
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
@@ -82,12 +82,11 @@ function(input, output, session) {
                   value=staticGlobalConfig[["assignmentName"]])
   updateTextInput(session=session, inputId="instructorEmail",
                   value=staticGlobalConfig[["instructorEmail"]])
-  shinyjs::html(id="currentRoster", 
-                paste0("<strong>", staticRosterBaseName, "</strong>"))
+  rosterText = paste0("<strong>", staticRosterBaseName, "</strong>")
   if (!is.null(staticRoster)) {
-    shinyjs::html(id="rosterSize", 
-                  paste0("(",  nrow(staticRoster), " rows)"))
+    rosterText = paste0(rosterText, "  (",  nrow(staticRoster), " rows)")
   }
+  shinyjs::html(id="currentRoster", rosterText)
   shinyjs::html(id="currentFolder", 
                 paste0("<strong>", getwd(), "</strong>"))
   shinyjs::html(id="totalPoints", 
@@ -125,7 +124,16 @@ function(input, output, session) {
   roster$roster = staticRoster
   roster$serialNum = 0
   
-
+  # Store student "name (email)" and allow observers to know when it changes
+  if (is.null(staticRoster)) {
+    browser()
+  } else {
+    shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
+    students = reactiveVal(paste0(staticRoster[["Name"]],
+                                  " (", staticRoster[["CanvasName"]],
+                                  "; ", shortEmail, ")"))
+  }
+  
   # Store rubrics and allow observers to know when they change
   rubrics = reactiveVal(staticRubrics)
   
@@ -157,12 +165,6 @@ function(input, output, session) {
   # Possible html output
   htmlFile = reactiveVal(NULL)
 
-  # Current input$gradeViewChoices is more up-to-date than
-  # input$gradeViewChoices when updateRadioButtons() is used
-  # for "gradeViewChoices".  This is needed to make the
-  # render work for "gradeViewOutput" after updating "gradeViewChoices".
-  currentGradeViewChoices = reactiveVal("(none)")
-  
   
   ########################
   ### Create observers ###
@@ -198,19 +200,35 @@ function(input, output, session) {
         # Update Assignment tab to show this roster's location
         
       }
-
-      choices = as.character(1:nrow(newRoster))
-      names(choices) = newRoster$selectText
-      updateSelectInput(session, "selectStudent", 
-                        label=paste(length(choices) - 1, "Students (Canvas name; email)"),
-                        choices=choices)
       
       # Let the app know that there is a new roster
       roster$roster = newRoster
       roster$serialNum = roster$serialNum + 1
     }
   }, ignoreInit=TRUE)
-
+  
+  # Handle new roster
+  observeEvent(roster$serialNum, {
+    if (is.null(roster$roster)) {
+      browser()
+    } else {
+      rost = roster$roster
+      shinyjs::html(id="currentRoster", 
+                    paste0("<strong>", rosterFileName(), " (",
+                           nrow(rost) - 1, " students)</strong>"))
+      shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
+      students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
+                      "; ", shortEmail, ")"))
+    }
+  }, ignoreNULL=FALSE)
+  
+  observeEvent(students(), {
+    st = students()
+    updateSelectInput(session, "selectStudent", 
+                      label=paste(length(st) - 1, "Students (Canvas name; email)"),
+                      choices=st, selected=st[1])
+  })
+  
   
   observeEvent(input$changeFolder, {
     f = try(file.choose(), silent=TRUE)
@@ -319,8 +337,8 @@ function(input, output, session) {
       currentFiles(NULL)
     } else {
       probNum = as.numeric(input$currentProblem)
-      studentInfo = roster$roster[as.numeric(input$selectStudent), ]
-      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
+      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
       currentFiles(cf)
     }
   }, ignoreInit=TRUE)
@@ -330,13 +348,10 @@ function(input, output, session) {
   observeEvent(c(input$selectStudent, input$currentProblem), {
     rubNow = rubrics()
     probNum = as.numeric(input$currentProblem)
-    rostNow = roster$roster
-    studentInfo = rostNow[as.numeric(input$selectStudent), ]
-    
-    cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
+    id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+    cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
     currentFiles(cf)
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
-      browser()
       currentFiles(NULL)
       path = NULL
       shinyjs::disable("analyzeCode")
@@ -344,7 +359,9 @@ function(input, output, session) {
       shinyjs::disable("analyzeOutput")
       htmlFile(NULL)
     } else {
-      path = setupSandbox(studentInfo$shortEmail, cf, probNum)
+      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+      studentEmail = studentInfo["email"]
+      path = setupSandbox(studentEmail, cf, probNum)
       shinyjs::html(id="sandboxVersion", 
                     paste("<strong>Version =", basename(path), "</strong>"))
       checks = checkEnables(path, cf, probNum)
@@ -364,8 +381,8 @@ function(input, output, session) {
         }
       }
     }
-
     thisPath(path)
+    freezeReactiveValue(input, "gradeViewChoice")
     updateGradeViewChoice(cf, path)
   }, ignoreInit=TRUE)
 
@@ -376,8 +393,8 @@ function(input, output, session) {
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
-    studentInfo = roster$roster[as.numeric(input$selectStudent), ]
-
+    studentEmail = selectStudentInfo(input$selectStudent, roster$roster)["email"]
+    
     if (last == "Problems") {
       isDirty = sapply(1:PROBLEM_COUNT,
                        function(p) eval(parse(text=paste0("rubric", p, "Dirty()"))))
@@ -430,17 +447,20 @@ function(input, output, session) {
     if (this == "Grading") {
       rubNow = rubrics()
       probNum = as.numeric(input$currentProblem)
-      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
+      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
+      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
+      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+      studentEmail = studentInfo["email"]
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
-        path = setupSandbox(studentInfo$shortEmail, cf, probNum)
+        path = setupSandbox(studentEmail, cf, probNum)
         thisPath(path)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
       } else {
         currentFiles(cf)
-        path = setupSandbox(studentInfo$shortEmail, cf, probNum)
+        path = setupSandbox(studentEmail, cf, probNum)
         thisPath(path)
         checks = checkEnables(path, cf, probNum)
         # Note: 'condition' cannot have names
@@ -459,8 +479,7 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      browser()
-      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="(none)",
+      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="",
                          selected="")
     } else {
       runFile = currentFiles$runDf$outName
@@ -485,7 +504,6 @@ function(input, output, session) {
         files = c(files, "Output Analysis")
       }
       if (is.null(files)) files = "(none)"
-      currentGradeViewChoices(files)
       updateRadioButtons(session, "gradeViewChoice", choices=files, 
                          selected = files[1], inline=TRUE)
     }
@@ -550,7 +568,8 @@ function(input, output, session) {
     req(thisPath(), currentFiles(), roster$roster)
     path = thisPath()
     cf = currentFiles()
-    #studentInfo = roster$roster[as.numeric(input$selectStudent), ]
+    studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
+    studentEmail = studentInfo["email"]
     probNum = as.numeric(input$currentProblem)
     rubric = rubrics()[[probNum]]
     rtn = runCode(path, cf$runDf$outName)
@@ -583,50 +602,6 @@ function(input, output, session) {
     print(co)
   }, ignoreInit=TRUE)
 
-  # Run all students
-  observeEvent(input$runAllStudents, {
-    probNum = as.numeric(input$currentProblem)
-    rubNow = rubrics()[[probNum]]
-    rostNow = roster$roster
-    for (studNum in 1:nrow(rostNow)) {
-      studInfo = rostNow[studNum, ]
-      cf = findCurrentFiles(studInfo$ID, allFiles(), rubNow)
-      path = setupSandbox(studInfo$shortEmail, cf, probNum)
-
-      # Check code
-      cc = checkCode(path, cf, rubNow)
-      print(cc)
-      print(attr(cc, "extra"))
-      
-      # Run code
-      if (is.null(cc) || is.null(cf$runDf$outName)) {
-        rc = FALSE
-      } else {
-        rc = runCode(path, cf$runDf$outName)
-      }
-      
-      if (rc) {
-        outFile = attr(rc, "outFile")
-        exitCode = attr(rc, "exitCode")
-        if (substring(outFile, nchar(outFile) - 3) == "html") {
-          htmlName = file.path(path, outFile)
-          htmlFile(htmlName)
-        } else {
-          htmlFile(NULL)
-        }
-        print(file.info(file.path(path, outFile)))
-      }
-      
-      # Check output
-      if (rc) {
-        co = checkOutput(path, cf, rubNow)
-        print(co)
-      }
-    } # end for each student
-  }) # end observe runAllStudents
-  
-  
-  
   # Save default rubrics  
   for (probNum in 1:PROBLEM_COUNT) {
     eval(parse(text=c(paste0("observeEvent(input$saveRubric", probNum, "AsDefault, {"),
@@ -636,31 +611,7 @@ function(input, output, session) {
   }
   rm(probNum)
   
-  # input$selectStudent's next and prior buttons
-  observeEvent(input$priorStudent, {
-    stNum = as.numeric(input$selectStudent)
-    if (stNum > 1) {
-      #freezeReactiveVal(thisPath)
-      updateSelectInput(session, "selectStudent", selected=as.character(stNum - 1))
-    }
-    shinyjs::toggleState("priorStudent", condition=(stNum > 1))
-  }, ignoreInit=TRUE)
-  
-  observeEvent(input$nextStudent, {
-    N = nrow(roster$roster)
-    stNum = as.numeric(input$selectStudent)
-    if (stNum < N) {
-      #freezeReactiveVal(thisPath)
-      #freezeReactiveValue(input, "selectStudent")
-      updateSelectInput(session, "selectStudent", selected=as.character(stNum + 1))
-    }
-    shinyjs::toggleState("nextStudent", condition=(stNum < N))
-  }, ignoreInit=TRUE)
-  
-  
-  
-  
-  
+    
   #########################
   ### Create renderings ###
   #########################
@@ -751,36 +702,70 @@ function(input, output, session) {
     
   # View files in "Grader" tab
   output$gradeViewOutput = renderUI({
+    validate(need(input$gradeViewChoice != "(none)", "Nothing to view"))
+    fname = input$gradeViewChoice
+    extension = gsub("(.*)([.])(.*)", "\\3", fname)
     path = thisPath()
-    cgvc = currentGradeViewChoices()
-    what = input$gradeViewChoice
-    if (! what %in% cgvc) what = cgvc[1]
-    validate(need(what != "(none)", "(nothing to view)"))
-    extension = gsub("(.*)([.])(.*)", "\\3", what)
-    if (what == "Code Analysis") {
-      tgs = codeAnalysisToTags(path, what)
-      return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
-    } else if (what == "Output Analysis") {
-      tgs = outputAnalysisToTags(path, what)
-      return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
+    if (input$gradeViewChoice == "Code Analysis") {
+      varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
+      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+        dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
+        return(p("not viewable"))
+      } else {
+        if (sum(problems$mention) == 0) {
+          return(p("All good (nothing to mention)"))
+        } else {
+          problems = apply(problems[problems$mention == TRUE, ], 1,
+                           function(line) {
+                             p(paste0(ifelse(line[['pts']] < 0, 
+                                             paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                             ifelse(line[['pts']]==0, "Zero penalty for",
+                                                    paste0(line[['pts']], " points lost for"))),
+                                      ifelse(line[['anathema']], " code anathema (",
+                                             " missing code ("),
+                                      line[['msg']], ") in '", line[['file']], "'."))
+                           })
+          names(problems) = NULL # Needed!!!
+          tgs = do.call(shiny::tags$div, problems)
+          return(tgs)
+        }
+      }
+    } else if (input$gradeViewChoice == "Output Analysis") {
+      varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
+      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+        dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
+        return(p("not viewable"))
+      } else {
+        problems = apply(problems[problems$mention == TRUE, ], 1,
+                         function(line) {
+                           p(paste0(ifelse(line[['pts']] < 0, 
+                                           paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                           ifelse(line[['pts']]==0, "Zero penalty for",
+                                                  paste0(line[['pts']], " points lost for"))),
+                                    ifelse(line[['anathema']], " output anathema (",
+                                           " missing output ("),
+                                    line[['msg']], ") in '", line[['file']], "'."))
+                         })
+        names(problems) = NULL # Needed!!!
+        tgs = do.call(shiny::tags$div, problems)
+        return(tgs)
+      }
     } else if (extension == "html") {
-      # Note: this depends on "addResourcePath("shinyGrader", file.expand("~"))
-      tgs = tags$iframe(src = file.path("/shinyGrader", 
-                                        substring(wd(), nchar(path.expand("~")) + 2),
-                                        path, what),
-                                          style="width:100%;",
+      # Note: this depends on "addResourcePath("shinyGrader", getwd())"
+      tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
+                        style="width:100%;",
                         id="iframe", height = "500px")
       return(tgs)
     } else {
-      text = try(suppressWarnings(readLines(file.path(path, what))), silent=TRUE)
+      text = try(suppressWarnings(readLines(file.path(path, fname))), silent=TRUE)
       if (is(text, "try-error")) {
-        dualAlert("Grading View Error", paste0(file.path(path, what), " not readable text"))
+        dualAlert("Grading View Error", paste0(file.path(path, fname), " not readable text"))
         return(p("not viewable"))
       } else {
         tgs = do.call(shiny::tags$pre, as.list(text))
         return(tgs)
       }
-    } # end codeAnalysis vs. outputAnalysis vs. html vs. plain text
+    }
   }) # end render "gradeViewOutput"
   
 } # end server function
