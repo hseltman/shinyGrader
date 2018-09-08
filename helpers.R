@@ -959,12 +959,7 @@ setupSandbox = function(studentShortEmail, currentFiles, probNum) {
       return(NULL)
     }
   }
-<<<<<<< HEAD
-  probFolder = file.path(studentEmail, probName)
-=======
-  
   probFolder = file.path(studentShortEmail, probName)
->>>>>>> 01d01a38881f49c20338f2c0e1dbb1c25a6d9017
   if (! dir.exists(probFolder)) {
     if (!dir.create(probFolder, showWarnings=FALSE)) {
       dualAlert("Sandbox error", paste("Cannot create folder", probFolder))
