@@ -708,7 +708,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
     # Note: may have multiple submissions (-1, etc.)
     indices = grep(paste0("^", fs, "$"), studentFiles$submitName)
     matched = studentFiles[indices, ]
-    justOne = sum(!duplicated(matched[indices, "submitName"])) == 1
+    justOne = sum(!duplicated(matched[, "submitName"])) == 1
     if (length(indices) > 0 && justOne) {
       # Canvas exact matches
       latest = which.max(matched$resubmitNumber)
@@ -724,7 +724,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
     # Try a case-insensitive match
     indices = grep(paste0("^", toupper(fs), "$"), toupper(studentFiles$submitName))
     matched = studentFiles[indices, ]
-    justOne = sum(!duplicated(matched[indices, "submitName"])) == 1
+    justOne = sum(!duplicated(matched[, "submitName"])) == 1
     if (length(indices) > 0 && justOne) {
       # Canvas "loosening" using RE
       latest = which.max(matched$resubmitNumber)
