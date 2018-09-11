@@ -251,7 +251,7 @@ function(input, output, session) {
   
   observeEvent(input$unzip, {
     f = input$unzip$datapath
-    suppressWarnings(unzip(f, overwrite=FALSE, junkpaths=TRUE))
+    unzip(f, overwrite=FALSE, junkpaths=TRUE)
     allFiles(parseFileNames(list.files.only(), staticCanvasRE))
   })
   
