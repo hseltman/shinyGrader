@@ -202,7 +202,7 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   #if (courseId == "") return("")
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
 
-  # Crate a regular expression to find the rosters produced by Canvas
+  # Create a regular expression to find the rosters produced by Canvas
   rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
   
   # Alternate functionality: return courseId to match rosters
@@ -973,15 +973,7 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
       return(NULL)
     }
   }
-<<<<<<< HEAD
-<<<<<<< HEAD
   probFolder = file.path(studentShortEmail, probName)
-=======
-=======
-  
->>>>>>> parent of 9f9f991... Fix setupSandbox() to correctly detect a prviously started analysis.
-  probFolder = file.path(studentEmail, probName)
->>>>>>> parent of 35658f1... Pull from 8/8/2018
   if (! dir.exists(probFolder)) {
     if (!dir.create(probFolder, showWarnings=FALSE)) {
       dualAlert("Sandbox error", paste("Cannot create folder", probFolder))
@@ -1016,10 +1008,11 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
                     !isTRUE(all.equal(thisCF$optDf$inName,
                                       currentFiles$optDf$inName))
         files = list.files(file.path(studentEmail, probName, lastDir))
+        runFile = thisCF$runDf$inName
         startedAnalysis = "codeProblems.RData" %in% files ||
-                          (!is.null(thisCF$runfile) &&
-                            (changeExtension(thisCF$runFile, "html") %in% files ||
-                            changeExtension(thisCF$runFile, "out") %in% files)) ||
+                          (!is.null(runFile) &&
+                            (changeExtension(runFile, "html") %in% files ||
+                            changeExtension(runFile, "out") %in% files)) ||
                           "outputProblems.RData" %in% files
         if (diffFiles && startedAnalysis) {
           useLastDir = FALSE
