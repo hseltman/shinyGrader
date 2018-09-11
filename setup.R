@@ -83,7 +83,6 @@ CANVAS_ROSTER_NAMES = list(
 FAKE_INSTRUCTOR_ROSTER = data.frame(ID=0,
                                     Name = I("Instructor"),
                                     Email = I("solution@fake.edu"),
-                                    shortEmail = I("solution"),
                                     CanvasName = I("solution"))
 attr(FAKE_INSTRUCTOR_ROSTER, "file") = file.path(getwd(), "fakeRoster")
 

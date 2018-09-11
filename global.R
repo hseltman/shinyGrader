@@ -23,13 +23,6 @@ if (SasLoc == "") SasLoc = "C:\\Program Files\\SasHome\\SASFOUNDATION\\9.4"
 SasProg = file.path(SasLoc, "sas.exe")
 
 
-# Make text for "selectStudent" dropdown widget
-makeSelectText = function(names, shortEmails, CanvasNames) {
-  return(paste0(names, " (", CanvasNames,
-                "; ", shortEmails, ")"))
-}
-
-
 # Complex logic is best accomplished by calling initializeGlobalConfig()
 # and storing these initial results in 'staticGlobalConfig' here, and
 # then using it in the 'server.R' and 'ui.R' files to initialize a
@@ -46,7 +39,6 @@ if (staticRosterFileName == "") {
 } else {
   staticRosterDirectory = dirname(staticRosterFileName)
   staticRoster = getRoster(staticRosterFileName, staticGlobalConfig[["instructorEmail"]])
-  staticRosterBaseName = basename(attr(staticRoster, "file"))
 }
 
 if (is.null(staticRoster)) {
@@ -54,17 +46,10 @@ if (is.null(staticRoster)) {
   staticGlobalConfig = updateGlobalConfig(staticGlobalConfig, list(rosterDirectory=""))
   staticRosterBaseName = ""
   fake = FAKE_INSTRUCTOR_ROSTER
-  if (staticGlobalConfig[["instructorEmail"]] != "") {
-    fake[["Email"]] = staticGlobalConfig[["instructorEmail"]]
-    fake[["shortEmail"]] = gsub("@.*", "", fake[["Email"]])
-  }
-  fake$selectText = I(makeSelectText(fake$Name, fake$shortEmail, fake$CanvasName))
+  if (staticGlobalConfig[["instructorEmail"]] != "")
+    fake[["Email"]] = staticGlobalConfig[["instructorEmail"]] != ""
   staticRoster = fake
 }
-
-staticSelectStudent = as.character(1:length(staticSelectStudent))
-names(staticSelectStudent) = staticRoster$selectText
-
 # else {
 #   if (staticRosterDirectory != staticGlobalConfig[["rosterDirectory"]]) {
 #     staticGlobalConfig = updateGlobalConfig(staticGlobalConfig,
@@ -83,6 +68,7 @@ if (length(staticActiveProblems) > 0) {
   staticCurrentProblem = c("Problem 1"="1")
 }
 
+
 staticCanvasRE = createCanvasRE()
 
 
@@ -93,12 +79,8 @@ staticCurrentFiles = findCurrentFiles(id=0,
 
 
 staticStudentEmail = staticGlobalConfig[["instructorEmail"]]
-staticStudentShortEmail = gsub("@.*", "", staticStudentEmail)
-if (staticStudentEmail == "") {
-  staticStudentEmail = "solution@fake.edu"
-  staticStudentShortEmail = gsub("@.*", "", staticStudentEmail)
-}
-staticThisPath = setupSandbox(staticStudentShortEmail, staticCurrentFiles, 
+if (staticStudentEmail == "") staticStudentEmail = "solution@fake.edu"
+staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles, 
                               probNum = min(1, staticActiveProblems))
 
 
@@ -133,6 +115,7 @@ probPanelCode = lapply(1:PROBLEM_COUNT,
                             stop("bad construction of 'probPanelCodeOne'")
                           }
                           
+                          #browser()
                           hit = grep("value=", txt[line:min(line+4, N)])
                           if (length(hit) == 0) {
                             warning("problem finding 'value=' for ", id)

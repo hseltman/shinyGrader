@@ -24,7 +24,6 @@
 #   parseSpec()
 #   runCode()
 #   checkEnables()
-#   collectErrors()
 
 # Convert a special kind of text file into a named list.
 #
@@ -262,8 +261,7 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
 # in which case all of the details of reading rosters may be specified in the
 # global configuration by just using the word "Canvas".
 #
-# The return value is a data.frame with columns "ID", "Name", "Email",
-# "shortEmail", and "selectString" (what shows in the "selectStudent" widget)
+# The return value is a data.frame with columns "ID", "Name", and "Email"
 # and a "file" attribute containing the roster location or NULL if the
 # file is not a valid roster file.  A student named "solution" with ID=0
 # and 'Email' equal to instructorId from the global config is always added
@@ -272,18 +270,17 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
 getRoster = function(rosterFileName, instructorEmail="") {
   # Fake instructor email
   fake = FAKE_INSTRUCTOR_ROSTER
-  if (instructorEmail != "") {
-    fake[["Email"]] = instructorEmail
-    fake[["shortEmail"]] = gsub("@.*", "", fake[["Email"]])
-  }
-  fake$selectText = I(makeSelectText(fake$Name, fake$shortEmail, fake$CanvasName))
-  
+  if (instructorEmail!="") fake[["Email"]] = instructorEmail
   
   #if (is.null(rosterFileName) || rosterFileName == "") {
   if (rosterFileName == "") {
       return(fake)
   }
-
+  
+  # Determine if the Shiny is running yet, to decide if shinyalert() will work
+  # inSession = exists("session", env=parent.env(parent.frame())) &&
+  #             is(get("session", env=parent.env(parent.frame())), "ShinySession")
+  
   # Get names of columns to read from a setup.R constant
   rosterNames = names(CANVAS_ROSTER_NAMES)
   canvasNames = as.character(CANVAS_ROSTER_NAMES)
@@ -298,17 +295,20 @@ getRoster = function(rosterFileName, instructorEmail="") {
   }
   #
   if (length(grep("Points Possible", roster[2]) > 0)) roster = roster[-2]
-  roster = try(suppressWarnings(read.csv(textConnection(roster), as.is=TRUE,
-                                         encoding="UTF8-BOM")),
-               silent=TRUE)
+  roster = try(suppressWarnings(read.csv(textConnection(roster), as.is=TRUE)), silent=TRUE)
   if (!is(roster, "data.frame") || is.null(names(roster))) {
     msg = paste("Invalid roster file:", rosterFileName)
     dualAlert("Bad roster file format", msg)
+    # if (inSession) {
+    #   shinyalert("Bad roster file", msg, type = "warning")
+    # } else {
+    #   warning("Bad roster file: (", rosterFileName, ") ", msg)
+    # }
     return(fake)
   }
   # Note: no usage of encoding="UTF-8" fixes the byte-order-mark that may be present
-  #if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.")
-  #  names(roster)[1] = substring(names(roster)[1], 10)
+  if (substring(names(roster)[1], 1, 9) == "X.U.FEFF.")
+    names(roster)[1] = substring(names(roster)[1], 10)
 
   # Get the correct column names for shinyGrader
   badColNames = !make.names(canvasNames) %in% names(roster)
@@ -316,6 +316,11 @@ getRoster = function(rosterFileName, instructorEmail="") {
     msg = paste0("Missing from roster: ",
                  paste(canvasNames[badColNames], collapse=", "))
     dualAlert("Bad roster file format", msg)
+    # if (inSession) {
+    #   shinyalert(paste("Bad roster file (", rosterFileName, ") ", msg), type = "warning")
+    # } else {
+    #   warning("Bad roster file: (", rosterFileName, ") ", msg)
+    # }
     return(fake)
   }
   
@@ -325,16 +330,25 @@ getRoster = function(rosterFileName, instructorEmail="") {
     msg = paste0("Roster columns ", paste(canvasNames, collapse=", "),
                  " not all in ", rosterFileName)
     dualAlert("Bad roster file", msg)
+    # if (inSession) {
+    #   shinyalert("Bad roster file", msg, type = "warning")
+    # } else {
+    #   warning("Bad roster file: ", msg)
+    # }
     return(fake)
   }
   names(roster) = rosterNames
-  roster$shortEmail = gsub("@.*", "", roster$Email)
   
   # Add column that matches file naming in Canvas
   two = strsplit(roster$Name, ",")
   if (any(sapply(two, length) != 2)) {
     msg = "Names in Canvas roster not in last, first format!"
     dualAlert("Bad roster file format", msg)
+    # if (inSession) {
+    #   shinyalert("Bad roster file", msg, type = "warning")
+    # } else {
+    #   warning("Bad roster file: ", msg)
+    # }
     return(fake)
   }
   roster$CanvasName = I(sapply(two,
@@ -342,8 +356,6 @@ getRoster = function(rosterFileName, instructorEmail="") {
                                  tolower(paste0(gsub(" ", "", LF[1]),
                                                 gsub(" ", "", LF[2])))
                                }))
-  roster$selectText = I(makeSelectText(roster$Name, roster$shortEmail,
-                                       roster$CanvasName))
   roster = rbind(fake, roster)
   attr(roster, "file") = rosterFileName
 
@@ -552,15 +564,15 @@ isProblemActive = function(problem) {
 
 
 # Convert input$selectStudent to an ID number and email
-# selectStudentInfo = function(ss, roster) {
-#   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
-#   emails = gsub("@.*", "", roster$Email)
-#   index = which(email == emails)
-#   if (length(index) != 1) stop("Roster error")
-#   rtn = c(roster[index, "ID"], email)
-#   names(rtn) = c("id", "email")
-#   return(rtn)
-# }
+selectStudentInfo = function(ss, roster) {
+  email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
+  emails = gsub("@.*", "", roster$Email)
+  index = which(email == emails)
+  if (length(index) != 1) stop("Roster error")
+  rtn = c(roster[index, "ID"], email)
+  names(rtn) = c("id", "email")
+  return(rtn)
+}
 
 
 # Given a file specification with the rules shown here and a
@@ -909,10 +921,10 @@ dualAlert = function(title, msg) {
   #inSession = exists("session", env=parent.env(parent.frame())) &&
   #  is(get("session", env=parent.env(parent.frame())), "ShinySession")
   
-  # inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
-  #             get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
+  inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
+              get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
   
-  if (isRunning()) {
+  if (inSession) {
     shinyalert(title, msg, type = "warning")
   } else {
     warning(title, ": ", msg)
@@ -949,17 +961,22 @@ dualAlert = function(title, msg) {
 # The save() version of the 'currentFiles' object is used to identify what files
 # define an attempt.  Do not erase "shinyGraderCF.RData" files!
 #
-setupSandbox = function(studentShortEmail, currentFiles, probNum) {
+setupSandbox = function(studentEmail, currentFiles, probNum) {
+  studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
   probName = paste0("problem", probNum)
 
   # Set up top student directory and 'lastDir'
-  if (! dir.exists(studentShortEmail)) {
-    if (!dir.create(studentShortEmail, showWarnings=FALSE)) {
-      dualAlert("Sandbox error", paste("Cannot create folder", studentShortEmail))
+  if (! dir.exists(studentEmail)) {
+    if (!dir.create(studentEmail, showWarnings=FALSE)) {
+      dualAlert("Sandbox error", paste("Cannot create folder", studentEmail))
       return(NULL)
     }
   }
+<<<<<<< HEAD
   probFolder = file.path(studentShortEmail, probName)
+=======
+  probFolder = file.path(studentEmail, probName)
+>>>>>>> parent of 35658f1... Pull from 8/8/2018
   if (! dir.exists(probFolder)) {
     if (!dir.create(probFolder, showWarnings=FALSE)) {
       dualAlert("Sandbox error", paste("Cannot create folder", probFolder))
@@ -994,7 +1011,7 @@ setupSandbox = function(studentShortEmail, currentFiles, probNum) {
                                       currentFiles$reqDf$inName)) ||
                     !isTRUE(all.equal(thisCF$optDf$inName,
                                       currentFiles$optDf$inName))
-        files = list.files(file.path(studentShortEmail, probName, lastDir))
+        files = list.files(file.path(studentEmail, probName, lastDir))
         startedAnalysis = "codeProblems.RData" %in% files ||
                           (!is.null(runFile) &&
                             (changeExtension(runFile, "html") %in% files ||
@@ -1662,143 +1679,4 @@ checkEnables = function(path, cf, probNum) {
   return(c(analyzeCode=analyzeCode,
            runCode=runCode,
            analyzeOutput=analyzeOutput))
-}
-
-
-
-## Code analysis to tags
-codeAnalysisToTags = function(path, fname) {
-  varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
-  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
-    dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
-    tgs = p("not viewable")
-    attr(tgs, "dock") = NA
-    return(tgs)
-  } else {
-    if (sum(problems$mention) == 0) {
-      tgs = p("All good (nothing to mention)")
-      attr(tgs, "dock") = sum(problems$dock)
-      return(tgs)
-    } else {
-      probTags = apply(problems[problems$mention == TRUE, ], 1,
-                       function(line) {
-                         p(paste0(ifelse(line[['pts']] < 0, 
-                                         paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                         ifelse(line[['pts']]==0, "Zero penalty for",
-                                                paste0(line[['pts']], " points lost for"))),
-                                  ifelse(line[['anathema']], " code anathema (",
-                                         " missing code ("),
-                                  line[['msg']], ") in '", line[['file']], "'."))
-                       })
-      names(probTags) = NULL # Needed!!!
-      tgs = do.call(shiny::tags$div, probTags)
-      attr(tgs, "dock") = sum(problems$dock)
-      return(tgs)
-    }
-  }
-}
-
-
-## Output analysis to tags
-outputAnalysisToTags = function(path, fname) {
-  varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
-  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
-    dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
-    tgs = p("not viewable")
-    attr(tgs, "dock") = NA
-    return()
-  } else {
-    probTags = apply(problems[problems$mention == TRUE, ], 1,
-                     function(line) {
-                       p(paste0(ifelse(line[['pts']] < 0, 
-                                       paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                       ifelse(line[['pts']]==0, "Zero penalty for",
-                                              paste0(line[['pts']], " points lost for"))),
-                                ifelse(line[['anathema']], " output anathema (",
-                                       " missing output ("),
-                                line[['msg']], ") in '", line[['file']], "'."))
-                     })
-    names(probTags) = NULL # Needed!!!
-    tgs = do.call(shiny::tags$div, probTags)
-    attr(tgs, "dock") = sum(problems$dock)
-    return(tgs)
-  }
-}
-
-
-# Un-escape HTML
-# https://stackoverflow.com/questions/5060076/convert-html-character-entity-encoding-in-r
-unescape_html <- function(str){
-  xml2::xml_text(xml2::read_html(paste0("<x>", str, "</x>")))
-}
-
-# Collect errors and warnings for R output
-collectErrorsR = function(text, ignore=NULL) {
-  
-}
-
-# Collect errors and warnings for Rmd output
-collectErrorsRmd = function(text, ignore=NULL) {
-  startAll = grep("^<pre><code", text)
-  stopAll = grep("^</code></pre>", text)
-  if (length(stopAll) != length(startAll)) {
-    msg = "garbled html"
-    attr(msg, "dock") = NA
-    return(msg)
-  }
-  startErr = grep("^<pre><code>## Error", text)
-  startWarn = grep("^<pre><code>## Warning", text)
-  info = data.frame(start=startAll, stop=stopAll, warn=FALSE, err=FALSE,
-                    message=I(NA_character_),
-                    causeN=NA_integer_, cause=I(NA_character_))
-  info$warn[info$start %in% startWarn] = TRUE
-  info$err[info$start %in% startErr] = TRUE
-  info$causeN[info$warn] = which(info$warn) - 1
-  info$causeN[info$err] = which(info$err) - 1
-  # If Error immediately follows Warning, the cause of the error
-  # is one prior
-  temp = which(info$warn)
-  info$causeN[info$err][info$causeN[info$err] %in% temp] = 
-    info$causeN[info$err][info$causeN[info$err] %in% temp] - 1
-  
-  nErr = sum(info$err)
-  nWarn = sum(info$warn)
-  if (nErr + nWarn == 0) {
-    msg = "all OK"
-    attr(msg, "dock") = 0
-    return(msg)
-  }
-  stopAll = grep("^</code></pre>", text)
-  stopErr = sapply(startErr,
-                   function(start) {
-                     stop = stopAll[stopAll > start]
-                     if (length(stop) == 0) return(NA)
-                     return(stop[1])
-                   })
-
-  EW = info$err | info$warn
-  info$message[EW] = apply(info[EW, ], 1,
-                           function(row) {
-                             msg = paste(text[as.numeric(row["start"]):
-                                              as.numeric(row["stop"])],
-                                         collapse=" ")
-                             return(substring(unescape_html(msg), 4))
-                           })
-
-  info$cause[EW] = sapply(info[EW, "causeN"],
-                         function(n) {
-                           row = info[n, ]
-                           cause = paste(text[as.numeric(row["start"]):
-                                              as.numeric(row["stop"])],
-                                          collapse="\n")
-                           cause = unescape_html(cause)
-                           #browser()
-                           closest = try(suppressWarnings(parse(text=cause)), silent=TRUE)
-                           if (!is(closest, "try-error") && length(closest) > 0)
-                             cause = as.character(closest[length(closest)])
-                           return(cause)
-                         })
-  info = info[EW, ]
-  info$dock = 222
-  return(info)
 }
