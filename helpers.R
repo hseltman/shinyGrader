@@ -201,7 +201,8 @@ updateStatus = function(status) {
 findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   #if (courseId == "") return("")
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
-  # Create a regular expression to find the rosters produced by Canvas
+
+  # Crate a regular expression to find the rosters produced by Canvas
   rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
   
   # Alternate functionality: return courseId to match rosters
@@ -973,8 +974,12 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
     }
   }
 <<<<<<< HEAD
+<<<<<<< HEAD
   probFolder = file.path(studentShortEmail, probName)
 =======
+=======
+  
+>>>>>>> parent of 9f9f991... Fix setupSandbox() to correctly detect a prviously started analysis.
   probFolder = file.path(studentEmail, probName)
 >>>>>>> parent of 35658f1... Pull from 8/8/2018
   if (! dir.exists(probFolder)) {
@@ -1003,9 +1008,8 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
     } else {
       thisCF = currentFiles
       what = try(suppressWarnings(load(cfPath)), silent=TRUE)
-      runFile = thisCF$runDf$inName
       if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
-        diffFiles = !isTRUE(all.equal(runFile,
+        diffFiles = !isTRUE(all.equal(thisCF$runDf$inName,
                                       currentFiles$runDf$inName)) ||
                     !isTRUE(all.equal(thisCF$reqDf$inName,
                                       currentFiles$reqDf$inName)) ||
@@ -1013,9 +1017,9 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
                                       currentFiles$optDf$inName))
         files = list.files(file.path(studentEmail, probName, lastDir))
         startedAnalysis = "codeProblems.RData" %in% files ||
-                          (!is.null(runFile) &&
-                            (changeExtension(runFile, "html") %in% files ||
-                            changeExtension(runFile, "out") %in% files)) ||
+                          (!is.null(thisCF$runfile) &&
+                            (changeExtension(thisCF$runFile, "html") %in% files ||
+                            changeExtension(thisCF$runFile, "out") %in% files)) ||
                           "outputProblems.RData" %in% files
         if (diffFiles && startedAnalysis) {
           useLastDir = FALSE
