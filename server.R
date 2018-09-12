@@ -348,8 +348,8 @@ function(input, output, session) {
       currentFiles(NULL)
     } else {
       probNum = as.numeric(input$currentProblem)
-      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
+      studentInfo = roster$roster[as.numeric(input$selectStudent), ]
+      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
       currentFiles(cf)
     }
   }, ignoreInit=TRUE)
@@ -359,10 +359,12 @@ function(input, output, session) {
   observeEvent(c(input$selectStudent, input$currentProblem), {
     rubNow = rubrics()
     probNum = as.numeric(input$currentProblem)
-    id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-    cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
+    rostNow = roster$roster
+    studentInfo = rostNow[as.numeric(input$selectStudent), ]
+    cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
     currentFiles(cf)
     if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+      browser()
       currentFiles(NULL)
       path = NULL
       shinyjs::disable("analyzeCode")
@@ -370,9 +372,7 @@ function(input, output, session) {
       shinyjs::disable("analyzeOutput")
       htmlFile(NULL)
     } else {
-      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-      studentEmail = studentInfo["email"]
-      path = setupSandbox(studentEmail, cf, probNum)
+      path = setupSandbox(studentInfo$shortEmail, cf, probNum)
       shinyjs::html(id="sandboxVersion", 
                     paste("<strong>Version =", basename(path), "</strong>"))
       checks = checkEnables(path, cf, probNum)
@@ -393,7 +393,6 @@ function(input, output, session) {
       }
     }
     thisPath(path)
-    freezeReactiveValue(input, "gradeViewChoice")
     updateGradeViewChoice(cf, path)
   }, ignoreInit=TRUE)
 
@@ -404,8 +403,8 @@ function(input, output, session) {
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
-    studentEmail = selectStudentInfo(input$selectStudent, roster$roster)["email"]
-    
+    studentInfo = roster$roster[as.numeric(input$selectStudent), ]
+
     if (last == "Problems") {
       isDirty = sapply(1:PROBLEM_COUNT,
                        function(p) eval(parse(text=paste0("rubric", p, "Dirty()"))))
@@ -458,20 +457,17 @@ function(input, output, session) {
     if (this == "Grading") {
       rubNow = rubrics()
       probNum = as.numeric(input$currentProblem)
-      id = selectStudentInfo(input$selectStudent, roster$roster)["id"]
-      cf = findCurrentFiles(id, allFiles(), rubNow[[probNum]])
-      studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-      studentEmail = studentInfo["email"]
+      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
-        path = setupSandbox(studentEmail, cf, probNum)
+        path = setupSandbox(studentInfo$shortEmail, cf, probNum)
         thisPath(path)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
       } else {
         currentFiles(cf)
-        path = setupSandbox(studentEmail, cf, probNum)
+        path = setupSandbox(studentInfo$shortEmail, cf, probNum)
         thisPath(path)
         checks = checkEnables(path, cf, probNum)
         # Note: 'condition' cannot have names
