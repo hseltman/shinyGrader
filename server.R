@@ -486,7 +486,7 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="",
+      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="(none)",
                          selected="")
     } else {
       runFile = currentFiles$runDf$outName
@@ -511,6 +511,7 @@ function(input, output, session) {
         files = c(files, "Output Analysis")
       }
       if (is.null(files)) files = "(none)"
+      currentGradeViewChoices(files)
       updateRadioButtons(session, "gradeViewChoice", choices=files, 
                          selected = files[1], inline=TRUE)
     }
@@ -575,8 +576,7 @@ function(input, output, session) {
     req(thisPath(), currentFiles(), roster$roster)
     path = thisPath()
     cf = currentFiles()
-    studentInfo = selectStudentInfo(input$selectStudent, roster$roster)
-    studentEmail = studentInfo["email"]
+    #studentInfo = roster$roster[as.numeric(input$selectStudent), ]
     probNum = as.numeric(input$currentProblem)
     rubric = rubrics()[[probNum]]
     rtn = runCode(path, cf$runDf$outName)
@@ -608,6 +608,50 @@ function(input, output, session) {
     updateGradeViewChoice(cf, path)
     print(co)
   }, ignoreInit=TRUE)
+  
+  # Run all students
+  observeEvent(input$runAllStudents, {
+    probNum = as.numeric(input$currentProblem)
+    rubNow = rubrics()[[probNum]]
+    rostNow = roster$roster
+    for (studNum in 1:nrow(rostNow)) {
+      studInfo = rostNow[studNum, ]
+      cf = findCurrentFiles(studInfo$ID, allFiles(), rubNow)
+      path = setupSandbox(studInfo$shortEmail, cf, probNum)
+      
+      # Check code
+      cc = checkCode(path, cf, rubNow)
+      print(cc)
+      print(attr(cc, "extra"))
+      
+      # Run code
+      if (is.null(cc) || is.null(cf$runDf$outName)) {
+        rc = FALSE
+      } else {
+        rc = runCode(path, cf$runDf$outName)
+      }
+      
+      if (rc) {
+        outFile = attr(rc, "outFile")
+        exitCode = attr(rc, "exitCode")
+        if (substring(outFile, nchar(outFile) - 3) == "html") {
+          htmlName = file.path(path, outFile)
+          htmlFile(htmlName)
+        } else {
+          htmlFile(NULL)
+        }
+        print(file.info(file.path(path, outFile)))
+      }
+      
+      # Check output
+      if (rc) {
+        co = checkOutput(path, cf, rubNow)
+        print(co)
+      }
+    } # end for each student
+  }) # end observe runAllStudents
+  
+  
 
   # Save default rubrics  
   for (probNum in 1:PROBLEM_COUNT) {
@@ -617,6 +661,28 @@ function(input, output, session) {
                       "})")))
   }
   rm(probNum)
+  
+  # input$selectStudent's next and prior buttons
+  observeEvent(input$priorStudent, {
+    stNum = as.numeric(input$selectStudent)
+    if (stNum > 1) {
+      #freezeReactiveVal(thisPath)
+      updateSelectInput(session, "selectStudent", selected=as.character(stNum - 1))
+    }
+    shinyjs::toggleState("priorStudent", condition=(stNum > 1))
+  }, ignoreInit=TRUE)
+  
+  observeEvent(input$nextStudent, {
+    N = nrow(roster$roster)
+    stNum = as.numeric(input$selectStudent)
+    if (stNum < N) {
+      #freezeReactiveVal(thisPath)
+      #freezeReactiveValue(input, "selectStudent")
+      updateSelectInput(session, "selectStudent", selected=as.character(stNum + 1))
+    }
+    shinyjs::toggleState("nextStudent", condition=(stNum < N))
+  }, ignoreInit=TRUE)
+  
   
     
   #########################
@@ -709,64 +775,32 @@ function(input, output, session) {
     
   # View files in "Grader" tab
   output$gradeViewOutput = renderUI({
-    validate(need(input$gradeViewChoice != "(none)", "Nothing to view"))
-    fname = input$gradeViewChoice
-    extension = gsub("(.*)([.])(.*)", "\\3", fname)
     path = thisPath()
-    if (input$gradeViewChoice == "Code Analysis") {
-      varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
-      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
-        dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
-        return(p("not viewable"))
-      } else {
-        if (sum(problems$mention) == 0) {
-          return(p("All good (nothing to mention)"))
-        } else {
-          problems = apply(problems[problems$mention == TRUE, ], 1,
-                           function(line) {
-                             p(paste0(ifelse(line[['pts']] < 0, 
-                                             paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                             ifelse(line[['pts']]==0, "Zero penalty for",
-                                                    paste0(line[['pts']], " points lost for"))),
-                                      ifelse(line[['anathema']], " code anathema (",
-                                             " missing code ("),
-                                      line[['msg']], ") in '", line[['file']], "'."))
-                           })
-          names(problems) = NULL # Needed!!!
-          tgs = do.call(shiny::tags$div, problems)
-          return(tgs)
-        }
-      }
-    } else if (input$gradeViewChoice == "Output Analysis") {
-      varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
-      if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
-        dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
-        return(p("not viewable"))
-      } else {
-        problems = apply(problems[problems$mention == TRUE, ], 1,
-                         function(line) {
-                           p(paste0(ifelse(line[['pts']] < 0, 
-                                           paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                           ifelse(line[['pts']]==0, "Zero penalty for",
-                                                  paste0(line[['pts']], " points lost for"))),
-                                    ifelse(line[['anathema']], " output anathema (",
-                                           " missing output ("),
-                                    line[['msg']], ") in '", line[['file']], "'."))
-                         })
-        names(problems) = NULL # Needed!!!
-        tgs = do.call(shiny::tags$div, problems)
-        return(tgs)
-      }
+    cgvc = currentGradeViewChoices()
+    what = input$gradeViewChoice
+    if (! what %in% cgvc) what = cgvc[1]
+    validate(need(what != "(none)", "(nothing to view)"))
+    extension = gsub("(.*)([.])(.*)", "\\3", what)
+    
+    if (what == "Code Analysis") {
+      tgs = codeAnalysisToTags(path, what)
+      return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
+    } else if (what == "Output Analysis") {
+      tgs = outputAnalysisToTags(path, what)
+      return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (extension == "html") {
-      # Note: this depends on "addResourcePath("shinyGrader", getwd())"
-      tgs = tags$iframe(src = paste0("/shinyGrader/", file.path(path, fname)),
-                        style="width:100%;",
-                        id="iframe", height = "500px")
+      
+      # Note: this depends on "addResourcePath("shinyGrader", file.expand("~"))
+      tgs = tags$iframe(src = file.path("/shinyGrader", 
+                                        substring(wd(), nchar(path.expand("~")) + 2),
+                                        path, what),
+                                        style="width:100%;",
+                                        id="iframe", height = "500px")
       return(tgs)
     } else {
-      text = try(suppressWarnings(readLines(file.path(path, fname))), silent=TRUE)
+      text = try(suppressWarnings(readLines(file.path(path, what))), silent=TRUE)
       if (is(text, "try-error")) {
-        dualAlert("Grading View Error", paste0(file.path(path, fname), " not readable text"))
+        dualAlert("Grading View Error", paste0(file.path(path, what), " not readable text"))
         return(p("not viewable"))
       } else {
         tgs = do.call(shiny::tags$pre, as.list(text))
