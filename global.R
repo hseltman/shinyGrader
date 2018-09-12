@@ -58,6 +58,8 @@ if (is.null(staticRoster)) {
 #   staticRosterBaseName = basename(attr(staticRoster, "file"))
 # }
 
+staticSelectStudent = as.character(1:length(staticRoster$selectText))
+
 
 staticRubrics = getRubrics()
 staticActiveProblems = which(sapply(staticRubrics, isProblemActive))
@@ -67,7 +69,6 @@ if (length(staticActiveProblems) > 0) {
 } else {
   staticCurrentProblem = c("Problem 1"="1")
 }
-
 
 staticCanvasRE = createCanvasRE()
 
