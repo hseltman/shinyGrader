@@ -455,7 +455,6 @@ function(input, output, session) {
     }
     
     if (this == "Grading") {
-      browser()
       rubNow = rubrics()
       probNum = as.numeric(input$currentProblem)
       cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
