@@ -329,6 +329,9 @@ getRoster = function(rosterFileName, instructorEmail="") {
   names(roster) = rosterNames
   roster$shortEmail = gsub("@.*", "", roster$Email)
   
+  # Drop Canvas's test student
+  roster = roster[roster$Name != "Student, Test", ]
+  
   # Add column that matches file naming in Canvas
   two = strsplit(roster$Name, ",")
   if (any(sapply(two, length) != 2)) {
@@ -1666,15 +1669,15 @@ checkEnables = function(path, cf, probNum) {
 
 codeAnalysisToTags = function(path, fname) {
   varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
-  dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
-  tgs = p("not viewable")
-  attr(tgs, "dock") = NA
-  return(tgs)
-} else {
-  if (sum(problems$mention) == 0) {
-    tgs = p("All good (nothing to mention)")
-    attr(tgs, "dock") = sum(problems$dock)
+  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+    dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
+    tgs = p("not viewable")
+    attr(tgs, "dock") = NA
     return(tgs)
+  } else if (sum(problems$mention) == 0) {
+      tgs = p("All good (nothing to mention)")
+      attr(tgs, "dock") = sum(problems$dock)
+      return(tgs)
   } else {
     probTags = apply(problems[problems$mention == TRUE, ], 1,
                      function(line) {
@@ -1692,7 +1695,7 @@ codeAnalysisToTags = function(path, fname) {
     return(tgs)
   }
 }
-}
+
 
 ## Output analysis to tags
 outputAnalysisToTags = function(path, fname) {

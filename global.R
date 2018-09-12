@@ -59,6 +59,7 @@ if (is.null(staticRoster)) {
 # }
 
 staticSelectStudent = as.character(1:length(staticRoster$selectText))
+names(staticSelectStudent) = staticRoster$selectText
 
 
 staticRubrics = getRubrics()
