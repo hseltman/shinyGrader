@@ -551,15 +551,15 @@ isProblemActive = function(problem) {
 
 
 # Convert input$selectStudent to an ID number and email
-selectStudentInfo = function(ss, roster) {
-  email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
-  emails = gsub("@.*", "", roster$Email)
-  index = which(email == emails)
-  if (length(index) != 1) stop("Roster error")
-  rtn = c(roster[index, "ID"], email)
-  names(rtn) = c("id", "email")
-  return(rtn)
-}
+# selectStudentInfo = function(ss, roster) {
+#   email = gsub("(^.+[;][ ])(.+)([)]$)", "\\2", ss)
+#   emails = gsub("@.*", "", roster$Email)
+#   index = which(email == emails)
+#   if (length(index) != 1) stop("Roster error")
+#   rtn = c(roster[index, "ID"], email)
+#   names(rtn) = c("id", "email")
+#   return(rtn)
+# }
 
 
 # Given a file specification with the rules shown here and a
@@ -908,10 +908,10 @@ dualAlert = function(title, msg) {
   #inSession = exists("session", env=parent.env(parent.frame())) &&
   #  is(get("session", env=parent.env(parent.frame())), "ShinySession")
   
-  inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
-              get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
+  # inSession = exists("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE) &&
+  #             get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
   
-  if (inSession) {
+  if (isRunning()) {
     shinyalert(title, msg, type = "warning")
   } else {
     warning(title, ": ", msg)
@@ -948,14 +948,13 @@ dualAlert = function(title, msg) {
 # The save() version of the 'currentFiles' object is used to identify what files
 # define an attempt.  Do not erase "shinyGraderCF.RData" files!
 #
-setupSandbox = function(studentEmail, currentFiles, probNum) {
-  studentEmail = gsub("(.*)(@.*)", "\\1", studentEmail)
+setupSandbox = function(studentShortEmail, currentFiles, probNum) {
   probName = paste0("problem", probNum)
 
   # Set up top student directory and 'lastDir'
-  if (! dir.exists(studentEmail)) {
-    if (!dir.create(studentEmail, showWarnings=FALSE)) {
-      dualAlert("Sandbox error", paste("Cannot create folder", studentEmail))
+  if (! dir.exists(studentShortEmail)) {
+    if (!dir.create(studentShortEmail, showWarnings=FALSE)) {
+      dualAlert("Sandbox error", paste("Cannot create folder", studentShortEmail))
       return(NULL)
     }
   }
@@ -986,15 +985,15 @@ setupSandbox = function(studentEmail, currentFiles, probNum) {
     } else {
       thisCF = currentFiles
       what = try(suppressWarnings(load(cfPath)), silent=TRUE)
+      runFile = thisCF$runDf$inName
       if (!is(what, "try-error") && length(what) == 1 || what == "currentFiles") {
-        diffFiles = !isTRUE(all.equal(thisCF$runDf$inName,
+        diffFiles = !isTRUE(all.equal(runFile,
                                       currentFiles$runDf$inName)) ||
                     !isTRUE(all.equal(thisCF$reqDf$inName,
                                       currentFiles$reqDf$inName)) ||
                     !isTRUE(all.equal(thisCF$optDf$inName,
                                       currentFiles$optDf$inName))
-        files = list.files(file.path(studentEmail, probName, lastDir))
-        runFile = thisCF$runDf$inName
+        files = list.files(file.path(studentShortEmail, probName, lastDir))
         startedAnalysis = "codeProblems.RData" %in% files ||
                           (!is.null(runFile) &&
                             (changeExtension(runFile, "html") %in% files ||
