@@ -7,7 +7,7 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
-  addResourcePath("shinyGrader", getwd())
+  addResourcePath("shinyGrader", path.expand("~"))
   
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
@@ -124,15 +124,15 @@ function(input, output, session) {
   roster$roster = staticRoster
   roster$serialNum = 0
   
-  # Store student "name (email)" and allow observers to know when it changes
-  if (is.null(staticRoster)) {
-    browser()
-  } else {
-    shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
-    students = reactiveVal(paste0(staticRoster[["Name"]],
-                                  " (", staticRoster[["CanvasName"]],
-                                  "; ", shortEmail, ")"))
-  }
+  # # Store student "name (email)" and allow observers to know when it changes
+  # if (is.null(staticRoster)) {
+  #   browser()
+  # } else {
+  #   shortEmail = gsub("(.*)(@.*)", "\\1", staticRoster[["Email"]])
+  #   students = reactiveVal(paste0(staticRoster[["Name"]],
+  #                                 " (", staticRoster[["CanvasName"]],
+  #                                 "; ", shortEmail, ")"))
+  # }
   
   # Store rubrics and allow observers to know when they change
   rubrics = reactiveVal(staticRubrics)
@@ -164,6 +164,11 @@ function(input, output, session) {
 
   # Possible html output
   htmlFile = reactiveVal(NULL)
+  # Current input$gradeViewChoices is more up-to-date than
+  # input$gradeViewChoices when updateRadioButtons() is used
+  # for "gradeViewChoices".  This is needed to make the
+  # render work for "gradeViewOutput" after updating "gradeViewChoices".
+  currentGradeViewChoices = reactiveVal("(none)")
 
   
   ########################
@@ -201,33 +206,39 @@ function(input, output, session) {
         
       }
       
+      choices = as.character(1:nrow(newRoster))
+      names(choices) = newRoster$selectText
+      updateSelectInput(session, "selectStudent", 
+                        label=paste(length(choices) - 1, "Students (Canvas name; email)"),
+                        choices=choices)
+      
       # Let the app know that there is a new roster
       roster$roster = newRoster
       roster$serialNum = roster$serialNum + 1
     }
   }, ignoreInit=TRUE)
   
-  # Handle new roster
-  observeEvent(roster$serialNum, {
-    if (is.null(roster$roster)) {
-      browser()
-    } else {
-      rost = roster$roster
-      shinyjs::html(id="currentRoster", 
-                    paste0("<strong>", rosterFileName(), " (",
-                           nrow(rost) - 1, " students)</strong>"))
-      shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
-      students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
-                      "; ", shortEmail, ")"))
-    }
-  }, ignoreNULL=FALSE)
-  
-  observeEvent(students(), {
-    st = students()
-    updateSelectInput(session, "selectStudent", 
-                      label=paste(length(st) - 1, "Students (Canvas name; email)"),
-                      choices=st, selected=st[1])
-  })
+  # # Handle new roster
+  # observeEvent(roster$serialNum, {
+  #   if (is.null(roster$roster)) {
+  #     browser()
+  #   } else {
+  #     rost = roster$roster
+  #     shinyjs::html(id="currentRoster", 
+  #                   paste0("<strong>", rosterFileName(), " (",
+  #                          nrow(rost) - 1, " students)</strong>"))
+  #     shortEmail = gsub("(.*)(@.*)", "\\1", rost[["Email"]])
+  #     students(paste0(rost[["Name"]], " (", rost[["CanvasName"]],
+  #                     "; ", shortEmail, ")"))
+  #   }
+  # }, ignoreNULL=FALSE)
+  # 
+  # observeEvent(students(), {
+  #   st = students()
+  #   updateSelectInput(session, "selectStudent", 
+  #                     label=paste(length(st) - 1, "Students (Canvas name; email)"),
+  #                     choices=st, selected=st[1])
+  # })
   
   
   observeEvent(input$changeFolder, {
