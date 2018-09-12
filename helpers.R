@@ -1662,3 +1662,134 @@ checkEnables = function(path, cf, probNum) {
            runCode=runCode,
            analyzeOutput=analyzeOutput))
 }
+
+
+codeAnalysisToTags = function(path, fname) {
+  varLoaded = try(load(file.path(path, "codeProblems.RData")), silent=TRUE)
+  dualAlert("Grading View Error", "Bad 'codeProblems.RData' file")
+  tgs = p("not viewable")
+  attr(tgs, "dock") = NA
+  return(tgs)
+} else {
+  if (sum(problems$mention) == 0) {
+    tgs = p("All good (nothing to mention)")
+    attr(tgs, "dock") = sum(problems$dock)
+    return(tgs)
+  } else {
+    probTags = apply(problems[problems$mention == TRUE, ], 1,
+                     function(line) {
+                       p(paste0(ifelse(line[['pts']] < 0, 
+                                       paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                       ifelse(line[['pts']]==0, "Zero penalty for",
+                                              paste0(line[['pts']], " points lost for"))),
+                                ifelse(line[['anathema']], " code anathema (",
+                                       " missing code ("),
+                                line[['msg']], ") in '", line[['file']], "'."))
+                     })
+    names(probTags) = NULL # Needed!!!
+    tgs = do.call(shiny::tags$div, probTags)
+    attr(tgs, "dock") = sum(problems$dock)
+    return(tgs)
+  }
+}
+}
+
+## Output analysis to tags
+outputAnalysisToTags = function(path, fname) {
+  varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
+  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+    dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
+    tgs = p("not viewable")
+    attr(tgs, "dock") = NA
+    return()
+  } else {
+    probTags = apply(problems[problems$mention == TRUE, ], 1,
+                     function(line) {
+                       p(paste0(ifelse(line[['pts']] < 0, 
+                                       paste0("Bonus of ", abs(line[['pts']]), " for"),
+                                       ifelse(line[['pts']]==0, "Zero penalty for",
+                                              paste0(line[['pts']], " points lost for"))),
+                                ifelse(line[['anathema']], " output anathema (",
+                                       " missing output ("),
+                                line[['msg']], ") in '", line[['file']], "'."))
+                     })
+    names(probTags) = NULL # Needed!!!
+    tgs = do.call(shiny::tags$div, probTags)
+    attr(tgs, "dock") = sum(problems$dock)
+    return(tgs)
+  }
+}
+# Un-escape HTML
+# https://stackoverflow.com/questions/5060076/convert-html-character-entity-encoding-in-r
+unescape_html <- function(str){
+  xml2::xml_text(xml2::read_html(paste0("<x>", str, "</x>")))
+}
+
+# Collect errors and warnings for R output
+collectErrorsR = function(text, ignore=NULL) {
+}
+
+# Collect errors and warnings for Rmd output
+collectErrorsRmd = function(text, ignore=NULL) {
+  startAll = grep("^<pre><code", text)
+  stopAll = grep("^</code></pre>", text)
+  if (length(stopAll) != length(startAll)) {
+    msg = "garbled html"
+    attr(msg, "dock") = NA
+    return(msg)
+  }
+  startErr = grep("^<pre><code>## Error", text)
+  startWarn = grep("^<pre><code>## Warning", text)
+  info = data.frame(start=startAll, stop=stopAll, warn=FALSE, err=FALSE,
+                    message=I(NA_character_),
+                    causeN=NA_integer_, cause=I(NA_character_))
+  info$warn[info$start %in% startWarn] = TRUE
+  info$err[info$start %in% startErr] = TRUE
+  info$causeN[info$warn] = which(info$warn) - 1
+  info$causeN[info$err] = which(info$err) - 1
+  # If Error immediately follows Warning, the cause of the error
+  # is one prior
+  temp = which(info$warn)
+  info$causeN[info$err][info$causeN[info$err] %in% temp] = 
+    info$causeN[info$err][info$causeN[info$err] %in% temp] - 1
+  nErr = sum(info$err)
+  nWarn = sum(info$warn)
+  if (nErr + nWarn == 0) {
+    msg = "all OK"
+    attr(msg, "dock") = 0
+    return(msg)
+  }
+  stopAll = grep("^</code></pre>", text)
+  stopErr = sapply(startErr,
+                   function(start) {
+                     stop = stopAll[stopAll > start]
+                     if (length(stop) == 0) return(NA)
+                     return(stop[1])
+                   })
+  EW = info$err | info$warn
+  info$message[EW] = apply(info[EW, ], 1,
+                           function(row) {
+                             msg = paste(text[as.numeric(row["start"]):
+                                                as.numeric(row["stop"])],
+                                         collapse=" ")
+                             return(substring(unescape_html(msg), 4))
+                           })
+  
+  info$cause[EW] = sapply(info[EW, "causeN"],
+                          function(n) {
+                            row = info[n, ]
+                            cause = paste(text[as.numeric(row["start"]):
+                                                 as.numeric(row["stop"])],
+                                          collapse="\n")
+                            cause = unescape_html(cause)
+                            #browser()
+                            closest = try(suppressWarnings(parse(text=cause)), silent=TRUE)
+                            if (!is(closest, "try-error") && length(closest) > 0)
+                              cause = as.character(closest[length(closest)])
+                            return(cause)
+                          })
+  info = info[EW, ]
+  info$dock = 222
+  return(info)
+}
+
