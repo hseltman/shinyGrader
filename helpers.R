@@ -1157,6 +1157,23 @@ runCode = function(path, runFile) {
     rtn = runR(runFile)
   } else if (ext == ".Rmd") {
     rtn = runRmd(runFile)
+    # Convert crash (e.g., missing library, to output)
+    if (rtn && attr(rtn, "exitCode")) {
+      crashReport = try(readLines("runRmd.out", warn=FALSE), silent=TRUE)
+      if (!is(crashReport, "try-error")) {
+        crashReport = grep("^[ ]*Error in", crashReport, value=TRUE)
+        if (length(crashReport) > 0) {
+          crashReport = c("<html><head><title>Crash Report</title></head>",
+                          paste("<body><p>Exit code =", attr(rtn, "exitCode"), "</p>"),
+                          "<code>", paste(crashReport, collapse="\n"), "</code>",
+                          "</head></html>")
+          writeMsg = try(write(crashReport, file=attr(rtn, "outFile")), silent=TRUE)
+          if (is(writeMsg, "try-error")) {
+            rtn[1] = FALSE
+          }
+        }
+      }
+    }
   } else if (ext == ".py") {
     rtn = runPy(runFile)
   } else if (ext == ".sas") {
