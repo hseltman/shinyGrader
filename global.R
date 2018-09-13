@@ -86,7 +86,7 @@ staticCurrentFiles = findCurrentFiles(id=0,
 
 staticStudentEmail = staticGlobalConfig[["instructorEmail"]]
 if (staticStudentEmail == "") staticStudentEmail = "solution@fake.edu"
-staticThisPath = setupSandbox(staticStudentEmail, staticCurrentFiles, 
+staticThisPath = setupSandbox(gsub("@.*", "", staticStudentEmail), staticCurrentFiles, 
                               probNum = min(1, staticActiveProblems))
 
 
