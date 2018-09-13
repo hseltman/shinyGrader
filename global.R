@@ -22,6 +22,10 @@ SasLoc = Sys.getenv("SAS_LOCATION")
 if (SasLoc == "") SasLoc = "C:\\Program Files\\SasHome\\SASFOUNDATION\\9.4"
 SasProg = file.path(SasLoc, "sas.exe")
 
+# Construct the contents of the selectInput widget for selecting students
+makeSelectText = function(names, shortEmails, CanvasNames) {
+  return(paste0(names, " (", CanvasNames, "; ", shortEmails, ")"))
+}
 
 # Complex logic is best accomplished by calling initializeGlobalConfig()
 # and storing these initial results in 'staticGlobalConfig' here, and
@@ -135,3 +139,10 @@ probPanelCode = paste0("tabsetPanel(",
                        paste(probPanelCode, collapse=",\n"), "\n)")
 
 
+# Set user home directory
+# Needed two places in server.R
+staticUserHome = path.expand("~")
+# "~" is not really user's home directory on Windows!
+if (endsWith(staticUserHome, "/Documents")) {
+  staticUserHome = substring(staticUserHome, 1, nchar(staticUserHome) - nchar("/Documents"))
+}

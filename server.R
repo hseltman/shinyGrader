@@ -7,8 +7,8 @@ require(shinyjs, quietly=TRUE, warn.conflicts=FALSE)
 
 # Server function
 function(input, output, session) {
-  addResourcePath("shinyGrader", path.expand("~"))
-  
+  addResourcePath("shinyGrader", staticUserHome)
+
   # This app is intended to only be run locally.
   # Stop it if the browser window is closed.
   session$onSessionEnded(function() {
@@ -487,7 +487,7 @@ function(input, output, session) {
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
       updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="(none)",
-                         selected="")
+                         selected="(none)")
     } else {
       runFile = currentFiles$runDf$outName
       files = c(runFile,
@@ -789,10 +789,9 @@ function(input, output, session) {
       tgs = outputAnalysisToTags(path, what)
       return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (extension == "html") {
-      
       # Note: this depends on "addResourcePath("shinyGrader", file.expand("~"))
       tgs = tags$iframe(src = file.path("/shinyGrader", 
-                                        substring(wd(), nchar(path.expand("~")) + 2),
+                                        substring(wd(), nchar(staticUserHome) + 2),
                                         path, what),
                                         style="width:100%;",
                                         id="iframe", height = "500px")
