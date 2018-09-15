@@ -486,8 +486,9 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      updateRadioButtons("gradeViewChoice", choiceNames="(none)", choiceValues="(none)",
-                         selected="(none)")
+      updateRadioButtons("gradeViewChoice", choices="(none)")
+                         #choiceNames="(none)", choiceValues="(none)",
+                         #selected="(none)")
     } else {
       runFile = currentFiles$runDf$outName
       files = c(runFile,

@@ -43,6 +43,7 @@ if (staticRosterFileName == "") {
 } else {
   staticRosterDirectory = dirname(staticRosterFileName)
   staticRoster = getRoster(staticRosterFileName, staticGlobalConfig[["instructorEmail"]])
+  staticRosterBaseName = basename(attr(staticRoster, "file"))
 }
 
 if (is.null(staticRoster)) {

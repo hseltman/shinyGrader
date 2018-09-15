@@ -1152,7 +1152,7 @@ runCode = function(path, runFile) {
   
   # Get execution type
   ext = gsub("(.*)([.][^.]+)", "\\2", runFile)
-  
+
   if (ext == ".R") {
     rtn = runR(runFile)
   } else if (ext == ".Rmd") {
