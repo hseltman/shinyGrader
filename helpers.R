@@ -1389,7 +1389,6 @@ checkCode = function(path, cf, rubric) {
 
 # test specification for a text
 testSpecs = function(specs, txt) {
-  
   # if (length(specs) == 0) {
   #   return(setNames(data.frame(matrix(ncol=6, nrow=0)),
   #                   c("pts", "msg", "pattern", "fixed", "found", "badRE")))
@@ -1547,25 +1546,38 @@ changeExtension = function(fname, ext) {
 
 # Check results
 checkOutput = function(path, cf, rubric) {
+  # get output requirements and anathemas from the rubric
   outputReq = splitCodeRubric(rubric$outputReq)
   outputAnath = splitCodeRubric(rubric$outputAnath)
+  
+  # Get the run name, and construct the output name
   if(length(cf$runMissing) == 0) {
     runName = cf$runDf$outName
-    outNonCanvas = cf$runDf$canvasFlag == FALSE
+    #outNonCanvas = cf$runDf$canvasFlag == FALSE
   } else {
     runName = changeExtension(cf$runMissing)
-    outNonCanvas = FALSE
+    #outNonCanvas = FALSE
   }
   extension = gsub("(.*)([.])(.*)", "\\3", runName)
   if (tolower(extension) %in% c("rmd", "sas")) {
-    outName = changeExtension(cf$runDf$outName, "out")
-  } else {
     outName = changeExtension(cf$runDf$outName, "html")
+  } else {
+    outName = changeExtension(cf$runDf$outName, "out")
+  }
+
+  # Where no '[fname]' is supplied in the rubric, change the
+  # list element names in outputReq and outputAnath from
+  # 'runFile' to the contents of 'outName'.
+  nReq = length(outputReq)
+  nAnath = length(outputAnath)
+  if (nReq > 0) {
+    names(outputReq)[names(outputReq) == 'runFile'] = outName
+  }
+  if (nAnath > 0) {
+    names(outputAnath)[names(outputAnath) == 'runFile'] = outName
   }
   
   # Setup to check output
-  nReq = length(outputReq)
-  nAnath = length(outputAnath)
   fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
   both = c(outputReq, outputAnath)
   # Get a list of data.frames of specification results, one per combo of file and Req vs. Anath
