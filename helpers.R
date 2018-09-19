@@ -207,13 +207,15 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
   
   # Alternate functionality: return courseId to match rosters
-  if (is.null(courseId)) {
+  if (is.null(courseId)) {browser()}
+  if (nchar(trimws(courseId)) == 0) {
     rosterRE = sub("COURSEID", "[0-9]+", rosterRE)
     rosterFiles = file.info(grep(rosterRE, list.files(), value=TRUE))
     if (nrow(rosterFiles) == 0) return("")
     rosterFileName = basename(rownames(rosterFiles)[which.max(rosterFiles$mtime)])
     courseId = gsub(CANVAS_ROSTER_DEFAULTS[["rosterCourseIdRE"]], "\\2", rosterFileName)
-    return(courseId)
+    #return(courseId)
+    return(file.path(getwd(), rosterFileName))
   }
   
   # Main functionality: find roster to match courseId
@@ -222,7 +224,7 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   # Start in the 'startingLoc'
   hasStart = !is.null(startingLoc) && trimws(startingLoc) != ""
   if (hasStart) {
-    loc = getwd()
+    loc = startingLoc # getwd()
     rosterFiles = file.info(grep(rosterRE, list.files(loc), value=TRUE))
   }
   if (!hasStart || nrow(rosterFiles) == 0) {
