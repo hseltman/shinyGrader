@@ -1697,7 +1697,6 @@ codeAnalysisToTags = function(path, fname) {
 
 ## Output analysis to tags
 outputAnalysisToTags = function(path, fname) {
-  browser()
   varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
   if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
     dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
