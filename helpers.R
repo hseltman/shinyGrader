@@ -1674,7 +1674,7 @@ codeAnalysisToTags = function(path, fname) {
     return(tgs)
   } else if (sum(problems$mention) == 0) {
       tgs = p("All good (nothing to mention)")
-      attr(tgs, "dock") = sum(problems$dock)
+      attr(tgs, "dock") = 0 #sum(problems$dock)
       return(tgs)
   } else {
     probTags = apply(problems[problems$mention == TRUE, ], 1,
@@ -1697,12 +1697,17 @@ codeAnalysisToTags = function(path, fname) {
 
 ## Output analysis to tags
 outputAnalysisToTags = function(path, fname) {
+  browser()
   varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
   if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
     dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
     tgs = p("not viewable")
     attr(tgs, "dock") = NA
     return()
+  } else if (sum(problems$mention) == 0) {
+    tgs = p("All good (nothing to mention)")
+    attr(tgs, "dock") = 0 # sum(problems$dock)
+    return(tgs)
   } else {
     probTags = apply(problems[problems$mention == TRUE, ], 1,
                      function(line) {
