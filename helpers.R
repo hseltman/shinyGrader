@@ -1562,27 +1562,8 @@ checkOutput = function(path, cf, rubric) {
   } else {
     outName = changeExtension(cf$runDf$outName, "html")
   }
-  m = match("runFile", names(outputReq))
-  if (!is.na(m)) {
-    if (outNonCanvas) {
-      dualAlert("Bad rubric",
-                "Rubric's output requirements cannot refer to a non-Canvas file")
-      outputReq['runFile'] = NULL
-    } else {
-      names(outputReq)[m] = outName
-    }
-  }
-  m = match("runFile", names(outputAnath))
-  if (!is.na(m)) {
-    if (outNonCanvas) {
-      dualAlert("Bad rubric",
-                "Rubric's code anathema cannot refer to a non-Canvas file")
-      outputAnath['runFile'] = NULL
-    } else {
-      names(outputAnath)[m] = outName
-    }
-  }
   
+  # Setup to check output
   nReq = length(outputReq)
   nAnath = length(outputAnath)
   fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
