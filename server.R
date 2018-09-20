@@ -521,10 +521,13 @@ function(input, output, session) {
   
   # Handle change in courseId
   observeEvent(input$courseId, {
-    cid = input$courseId
-    gcDirty(TRUE)
-    rname = findRoster(trimws(cid))
-    rosterFileName(rname)
+    cid = trimws(input$courseId)
+    # CMU Course Ids are 5 characters; don't respond until complete or erased
+    if (nchar(cid) %in% c(0, 5)) {
+      gcDirty(TRUE)
+      rname = findRoster(cid)
+      rosterFileName(rname)
+    }
   }, ignoreInit=TRUE)
   
   # Construct observer for assignmentName

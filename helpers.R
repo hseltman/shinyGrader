@@ -201,7 +201,6 @@ updateStatus = function(status) {
 #
 findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   #if (courseId == "") return("")
-  browser()
   if (!Canvas) stop("Canvas=FALSE is not yet programmed")
 
   # Create a regular expression to find the rosters produced by Canvas
