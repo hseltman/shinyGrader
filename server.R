@@ -186,10 +186,9 @@ function(input, output, session) {
     # A supposed roster file was found, but it may not be a valid roster file,
     # so first try to read it.
     rostName = rosterFileName()
+    
     if (rostName != "fakeRoster") {
       newRoster = getRoster(rostName, globalConfig()[["instructorEmail"]])
-      
-      
       if (is.null(newRoster)) {
         if (rostName != "") rosterFileName("")
       } else {
@@ -216,6 +215,12 @@ function(input, output, session) {
       roster$roster = newRoster
       roster$serialNum = roster$serialNum + 1
     }
+ 
+    if (!exists("newRoster") || is.null(newRoster) || !is.data.frame(newRoster)) browser()
+    shinyjs::html(id="currentRoster", 
+                  paste0("<strong>", basename(rostName), " (",
+                         nrow(newRoster) - 1, " students)</strong>"))
+                  
   }, ignoreInit=TRUE)
   
   # # Handle new roster
