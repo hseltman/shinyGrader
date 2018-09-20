@@ -273,6 +273,7 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
 #
 getRoster = function(rosterFileName, instructorEmail="") {
   # Fake instructor email
+  browser()
   fake = FAKE_INSTRUCTOR_ROSTER
   if (instructorEmail!="") {
     fake[["Email"]] = instructorEmail
