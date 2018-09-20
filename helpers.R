@@ -207,8 +207,7 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   rosterRE = CANVAS_ROSTER_DEFAULTS[["rosterRE"]]
   
   # Alternate functionality: return courseId to match rosters
-  if (is.null(courseId)) {browser()}
-  if (nchar(trimws(courseId)) == 0) {
+  if (is.null(courseId) || nchar(trimws(courseId)) == 0) {
     rosterRE = sub("COURSEID", "[0-9]+", rosterRE)
     rosterFiles = file.info(grep(rosterRE, list.files(), value=TRUE))
     if (nrow(rosterFiles) == 0) return("")
