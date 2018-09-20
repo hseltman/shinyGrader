@@ -34,7 +34,6 @@ makeSelectText = function(names, shortEmails, CanvasNames) {
 staticGlobalConfig = initializeGlobalConfig(globalLoc)
 staticRosterFileName = findRoster(staticGlobalConfig[["courseId"]],
                                   staticGlobalConfig[["rosterDirectory"]])
-browser()
 if (staticRosterFileName == "") {
   staticRosterDirectory = ""
   staticRoster = NULL
