@@ -486,7 +486,7 @@ function(input, output, session) {
   
   updateGradeViewChoice = function(currentFiles, path) {
     if (is.null(currentFiles)) {
-      updateRadioButtons("gradeViewChoice", choices="(none)")
+      updateRadioButtons(session, "gradeViewChoice", choices="(none)")
                          #choiceNames="(none)", choiceValues="(none)",
                          #selected="(none)")
     } else {
