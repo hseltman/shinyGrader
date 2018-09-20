@@ -917,7 +917,9 @@ dualAlert = function(title, msg) {
   #             get("shinyIsRunning", envir=.GlobalEnv, inherits=FALSE)
   
   if (isRunning()) {
-    shinyalert(title, msg, type = "warning")
+    if (is(try(shinyalert(title, msg, type = "warning")), "try-error")) {
+      browser()
+    }
   } else {
     warning(title, ": ", msg)
   }
