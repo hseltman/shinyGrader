@@ -598,6 +598,7 @@ isProblemActive = function(problem) {
 #  otherFiles: a character vector of non-student files
 #
 matchFile = function(fs, studentFiles, otherFiles) {
+  if (is.null(studentFiles)) return(NULL)
   fs = trimws(fs)
   if (fs == "") return(NULL)
   if (substring(fs, 1, 2) %in% c("@^", "^@")) {
