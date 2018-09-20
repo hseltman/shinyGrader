@@ -224,11 +224,11 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
   hasStart = !is.null(startingLoc) && trimws(startingLoc) != ""
   if (hasStart) {
     loc = startingLoc # getwd()
-    rosterFiles = file.info(grep(rosterRE, list.files(loc), value=TRUE))
+    rosterFiles = file.info(file.path(loc, grep(rosterRE, list.files(loc), value=TRUE)))
   }
   if (!hasStart || nrow(rosterFiles) == 0) {
     loc = getwd()
-    rosterFiles = file.info(grep(rosterRE, list.files(loc), value=TRUE))
+    rosterFiles = file.info(file.path(loc, grep(rosterRE, list.files(loc), value=TRUE)))
     if (nrow(rosterFiles) == 0) {
       LOCS = Sys.getenv("HOME")
       if (file.exists(file.path(LOCS, ROSTER_LOCATION_FILE))) {
@@ -273,7 +273,6 @@ findRoster = function(courseId=NULL, startingLoc=NULL, Canvas=TRUE) {
 #
 getRoster = function(rosterFileName, instructorEmail="") {
   # Fake instructor email
-  browser()
   fake = FAKE_INSTRUCTOR_ROSTER
   if (instructorEmail!="") {
     fake[["Email"]] = instructorEmail
