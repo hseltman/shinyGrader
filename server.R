@@ -251,8 +251,7 @@ function(input, output, session) {
     if (!is(f, "try-error")) {
       newWd = dirname(f)
       wd(newWd)
-      browser()
-      if (length(grep("[.]zip$", list.files())) > 0) {
+      if (length(grep("[.]zip$", list.files(newWd))) > 0) {
         shinyjs::enable("unzip")
       } else {
         shinyjs::disable("unzip")
@@ -263,7 +262,6 @@ function(input, output, session) {
   
   observeEvent(input$fileRefresh, {
     allFiles(parseFileNames(list.files.only(), staticCanvasRE))
-    browser()
     if (length(grep("[.]zip$", list.files())) > 0) {
       shinyjs::enable("unzip")
     } else {
