@@ -251,6 +251,11 @@ function(input, output, session) {
     if (!is(f, "try-error")) {
       newWd = dirname(f)
       wd(newWd)
+      if (length(grep("[.]zip$", list.files())) > 0) {
+        shinyjs::enable("unzip")
+      } else {
+        shinyjs::disable("zip")
+      }
     }
   }, ignoreInit=TRUE)
   
