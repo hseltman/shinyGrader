@@ -572,7 +572,7 @@ isProblemActive = function(problem) {
 # The columns are:
 #   inName: name of the original file in the working directory
 #   outName: name in should have in the sandbox
-#   directory: location relative to working diretory / sandbox
+#   directory: location relative to working directory / sandbox
 #   deleteFlag: should be deleted after use
 #   caseFlag: case was wrong
 #   looseFlag: file name convention not strictly followed
@@ -608,7 +608,7 @@ matchFile = function(fs, studentFiles, otherFiles) {
   }
   
   # Special case of "dir/file" with missing "@"
-  if (length(grep("[{]", fs)) == 0 && dirname(fs) != ".") {
+  if (!startsWith(fs, "@") && length(grep("[{]", fs)) == 0 && dirname(fs) != ".") {
     fs = paste0("@", fs)
   }
   
@@ -772,13 +772,13 @@ matchFile = function(fs, studentFiles, otherFiles) {
         for (m in length(uMatches)) {
           matched = studentFiles[studentFiles$baseFileName == m, ]
           latest = which.max(matched$resubmitNumber)
-          rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
-                                      outName=I(fs),
-                                      directory=I(directory),
-                                      deleteFlag=delete,
-                                      caseFlag=FALSE,
-                                      looseFlag=TRUE,
-                                      canvasFlag=Canvas))
+          return(rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
+                                       outName=I(fs),
+                                       directory=I(directory),
+                                       deleteFlag=delete,
+                                       caseFlag=FALSE,
+                                       looseFlag=TRUE,
+                                       canvasFlag=Canvas)))
         }
       }
       # Exact target supplied, not found, and loosened version not found
@@ -812,17 +812,16 @@ matchFile = function(fs, studentFiles, otherFiles) {
       for (m in length(uMatches)) {
         matched = studentFiles[studentFiles$baseFileName == m, ]
         latest = which.max(matched$resubmitNumber)
-        rtn = rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
-                                    outName=I(matched[latest, "submitName"]),
-                                    directory=I(directory),
-                                    deleteFlag=delete,
-                                    caseFlag=TRUE,
-                                    looseFlag=FALSE,
-                                    canvasFlag=Canvas))
+        return(rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
+                                     outName=I(matched[latest, "submitName"]),
+                                     directory=I(directory),
+                                     deleteFlag=delete,
+                                     caseFlag=TRUE,
+                                     looseFlag=FALSE,
+                                     canvasFlag=Canvas)))
       }
     }
     # No wildcards found
-    return(NULL)
   } # end if (fsRE != ""): RE given for Canvas files
   
   # No direct match and no RE
