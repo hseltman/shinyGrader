@@ -658,10 +658,10 @@ matchFile = function(fs, studentFiles, otherFiles) {
   ### Handle finding the file in "other" (non-Canvas file) ###
   ############################################################
   if (!Canvas) {
-    directory = dirname(fs)
-    if (directory != ".") otherFiles = list.files.only(directory)
-    fs = basename(fs)
     if (fs != "") { # Try direct match
+      directory = dirname(fs)
+      if (directory != ".") otherFiles = list.files.only(directory)
+      fs = basename(fs)
       indices = grep(fs, otherFiles) # length is always 0 or 1
       if (length(indices) > 0) {
         # non-Canvas exact match
@@ -675,6 +675,9 @@ matchFile = function(fs, studentFiles, otherFiles) {
       }
       
     } else { # Try RE
+      directory = dirname(fsRE)
+      if (directory != ".") otherFiles = list.files.only(directory)
+      fsRE = basename(fsRE)
       indices = grep(fsRE, otherFiles)
       if (length(indices) == 1) {
         # Non-Canvas RE "loosening" finds one match
