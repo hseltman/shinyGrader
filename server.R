@@ -373,7 +373,7 @@ function(input, output, session) {
     studentInfo = rostNow[as.numeric(input$selectStudent), ]
     cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
     currentFiles(cf)
-    if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
+    if (is.null(cf) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
       browser()
       currentFiles(NULL)
       path = NULL
