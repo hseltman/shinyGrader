@@ -1192,7 +1192,7 @@ runCode = function(path, runFile) {
   return(rtn)
 }
 
-# Split a specification string containing a set if code specification
+# Split a specification string containing a set of code specification
 # by section ([filename] at the beginning of a line).
 # Return a named list based on section filename.  Call the first element "runfile"
 # if present and unnamed.
@@ -1446,7 +1446,7 @@ parseSpec = function(spec) {
       pts = 0
       msg = ""
     } else {
-      pm = strsplit(prefix, ":")[[1]]
+      pm = trimws(strsplit(prefix, ":")[[1]])
       pts = suppressWarnings(as.numeric(pm[1]))
       if (is.na(pts)) {
         pts = 0
