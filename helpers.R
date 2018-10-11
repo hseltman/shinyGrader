@@ -1697,17 +1697,17 @@ codeAnalysisToTags = function(path, fname) {
   } else {
     problems = problems[problems$mention == TRUE, ]
     probTags = lapply(1:nrow(problems),
-                     function(lineNum) {
-                       line = problems[lineNum, ]
-                       pts = line[['pts']]
-                       p(paste0(ifelse(pts < 0, 
-                                       paste0("Bonus of ", abs(pts), " for"),
-                                       ifelse(pts==0, "Zero penalty for",
-                                              paste0(pts, " points lost for"))),
-                                ifelse(line[['anathema']], " code anathema (",
-                                       " missing code ("),
-                                line[['msg']], ") in '", line[['file']], "'."))
-                     })
+                      function(lineNum) {
+                        line = problems[lineNum, ]
+                        pts = line[['pts']]
+                        p(paste0(ifelse(pts < 0, 
+                                        paste0("Bonus of ", abs(pts), " for"),
+                                        ifelse(pts==0, "Zero penalty for",
+                                               paste0(pts, " points lost for"))),
+                                 ifelse(line[['anathema']], " code anathema (",
+                                        " missing code ("),
+                                 line[['msg']], ") in '", line[['file']], "'."))
+                      })
     names(probTags) = NULL # Needed!!!
     tgs = do.call(shiny::tags$div, probTags)
     attr(tgs, "dock") = sum(problems$dock)
@@ -1731,17 +1731,17 @@ outputAnalysisToTags = function(path, fname) {
   } else {
     problems = problems[problems$mention == TRUE, ]
     probTags = lapply(1:nrow(problems),
-                     function(lineNum) {
-                       line = problems[lineNum, ]
-                       pts = line[['pts']]
-                       p(paste0(ifelse(pts < 0, 
-                                       paste0("Bonus of ", abs(pts), " for"),
-                                       ifelse(pts==0, "Zero penalty for",
-                                              paste0(pts, " points lost for"))),
-                                ifelse(line[['anathema']], " output anathema (",
-                                       " missing output ("),
-                                line[['msg']], ") in '", line[['file']], "'."))
-                     })
+                      function(lineNum) {
+                        line = problems[lineNum, ]
+                        pts = line[['pts']]
+                        p(paste0(ifelse(pts < 0, 
+                                        paste0("Bonus of ", abs(pts), " for"),
+                                        ifelse(pts==0, "Zero penalty for",
+                                               paste0(pts, " points lost for"))),
+                                 ifelse(line[['anathema']], " output anathema (",
+                                        " missing output ("),
+                                 line[['msg']], ") in '", line[['file']], "'."))
+                      })
     names(probTags) = NULL # Needed!!!
     tgs = do.call(shiny::tags$div, probTags)
     attr(tgs, "dock") = sum(problems$dock)
