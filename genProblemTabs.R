@@ -25,7 +25,7 @@
 #
 # Current code required:
 #  actionButton("saveRubric##AsDefault", "Save as defaults for all new rubrics"))
-
+browser()
 
 probPanelCodeOne = c(
   '  tabPanel("Problem ##",',
