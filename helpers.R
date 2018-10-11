@@ -1728,13 +1728,14 @@ outputAnalysisToTags = function(path, fname) {
   } else {
     probTags = apply(problems[problems$mention == TRUE, ], 1,
                      function(line) {
-                       p(paste0(ifelse(line[['pts']] < 0, 
-                                       paste0("Bonus of ", abs(line[['pts']]), " for"),
-                                       ifelse(line[['pts']]==0, "Zero penalty for",
-                                              paste0(line[['pts']], " points lost for"))),
-                                ifelse(line[['anathema']], " output anathema (",
+                       pts = as.numeric(trimws(line['pts']))
+                       p(paste0(ifelse(pts < 0, 
+                                       paste0("Bonus of ", abs(pts), " for"),
+                                       ifelse(pts==0, "Zero penalty for",
+                                              paste0(pts, " points lost for"))),
+                                ifelse(line['anathema'], " output anathema (",
                                        " missing output ("),
-                                line[['msg']], ") in '", line[['file']], "'."))
+                                line['msg'], ") in '", line['file'], "'."))
                      })
     names(probTags) = NULL # Needed!!!
     tgs = do.call(shiny::tags$div, probTags)
