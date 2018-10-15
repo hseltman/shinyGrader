@@ -66,7 +66,6 @@ if (is.null(staticRoster)) {
 staticSelectStudent = as.character(1:length(staticRoster$selectText))
 names(staticSelectStudent) = staticRoster$selectText
 
-
 staticRubrics = getRubrics()
 staticActiveProblems = which(sapply(staticRubrics, isProblemActive))
 if (length(staticActiveProblems) > 0) {
@@ -103,6 +102,7 @@ probPanelCode = lapply(1:PROBLEM_COUNT,
                       function(prob) {
                         txt = probPanelCodeOne
                         N = length(txt)
+                        # 'rubricDefaults' is dynamically defined in "genProblemTabs.R"
                         for (ii in 1:length(rubricDefaults)) {
                           id = names(rubricDefaults)[ii]
                           defaultVal = staticRubrics[[prob]][[id]]
@@ -110,27 +110,36 @@ probPanelCode = lapply(1:PROBLEM_COUNT,
                             warning("missing default: ", id)
                             next
                           }
+                          
                           if (is.character(defaultVal)) {
-                            defaultVal = gsub('"', '\\\\\\\\"',
-                                              gsub("'", "\\\\\\\\'",
-                                                   defaultVal))
+                            defaultVal = gsub('"', '\\\\\\"',
+                                             gsub("'", "\\\\\\'",
+                                                  #gsub("[\\]([0-9])", "\\\\\\\\2",
+                                                  gsub("[\\]", "\\\\\\\\",
+                                                            defaultVal)))
                             defaultVal = paste0('"', defaultVal, '"')
                           }
+                          DV = defaultVal
                           
                           line = grep(id, txt)
                           if (length(line) != 1) {
                             stop("bad construction of 'probPanelCodeOne'")
                           }
-                          
-                          #browser()
+                          # Note: some widget definitions are over multiple lines
                           hit = grep("value=", txt[line:min(line+4, N)])
                           if (length(hit) == 0) {
                             warning("problem finding 'value=' for ", id)
                             next
                           }
                           line = line - 1 + hit[1]  # first hit
-                          txt[line] = gsub("(.*value=)(.*?)([)])(.*)",
-                                           paste0("\\1", defaultVal, ")\\4"), txt[line])
+                          TL = txt[line]
+                          preFill = "value="
+                          preValue = regexpr(preFill, TL) + nchar(preFill) - 1
+                          ending = substring(TL, preValue + 1)
+                          postValue = regexpr(")", ending)
+                          # Note: using the more obvious gsub() here has quoting problems
+                          txt[line] = paste0(substring(TL, 1, preValue),
+                                             DV, substring(ending, postValue))
                         }
                         txt = gsub("##", paste(prob), txt, fixed=TRUE)
                         return(paste(txt, collapse="\n"))
@@ -138,7 +147,6 @@ probPanelCode = lapply(1:PROBLEM_COUNT,
 
 probPanelCode = paste0("tabsetPanel(",
                        paste(probPanelCode, collapse=",\n"), "\n)")
-
 
 # Set user home directory
 # Needed two places in server.R
