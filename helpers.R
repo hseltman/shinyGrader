@@ -1079,7 +1079,7 @@ setupSandbox = function(studentShortEmail, currentFiles, probNum) {
 # preserving the modify time
 #
 copyWithPrejudice = function(from, to, isRunFile) {
-  extension = tolower(gsub("(.*)([.])(.*)", "\\3", from))
+  extension = getExtension(from)
   if (! extension %in% c("py", "r", "rmd", "sas")) {
     return(file.copy(from, to, overwrite=TRUE, copy.date=TRUE))
   }
@@ -1546,6 +1546,11 @@ runSas = function(runFile) {
   return(rtn)
 }
 
+getExtension = function(fname) {
+  if (!grepl("[.]", fname)) return("")
+  tolower(gsub("(.*)([.])(.*)", "\\3", fname))
+}
+
 changeExtension = function(fname, ext) {
   return(gsub("(.*[.])(.*)", paste0("\\1", ext), fname))
 }
@@ -1561,10 +1566,11 @@ checkOutput = function(path, cf, rubric) {
     runName = cf$runDf$outName
     #outNonCanvas = cf$runDf$canvasFlag == FALSE
   } else {
+    browser()
     runName = changeExtension(cf$runMissing)
     #outNonCanvas = FALSE
   }
-  extension = gsub("(.*)([.])(.*)", "\\3", runName)
+  extension = getExtension(runName)
   if (tolower(extension) %in% c("rmd", "sas")) {
     outName = changeExtension(cf$runDf$outName, "html")
   } else {
