@@ -1,4 +1,3 @@
-# helper functions for shinyGrader
 # H. Seltman, August 2018
 
 # Functions in this file:
@@ -24,7 +23,7 @@
 #   parseSpec()
 #   runCode()
 #   checkEnables()
-#   colectErrors()
+#   collectErrors()
 
 # Convert a special kind of text file into a named list.
 #
@@ -1571,7 +1570,7 @@ checkOutput = function(path, cf, rubric) {
     #outNonCanvas = FALSE
   }
   extension = getExtension(runName)
-  if (tolower(extension) %in% c("rmd", "sas")) {
+  if (extension %in% c("rmd", "sas")) {
     outName = changeExtension(cf$runDf$outName, "html")
   } else {
     outName = changeExtension(cf$runDf$outName, "out")
@@ -1621,9 +1620,40 @@ checkOutput = function(path, cf, rubric) {
   problems$dock = 0
   problems$dock[problems$mention] = problems$pts[problems$mention]
   
+  if (extension == "r") {
+    errWarn = collectErrorsR(file.path(path, outName))
+  } else if (extension == 'rmd') {
+    errWarn = collectErrorsRmd(file.path(path, outName))
+  } else if (extension == 'sas') {
+    errWarn = collectErrorsSAS(file.path(path, changeExtension(runName, "log")))
+  } else {
+    dualAlert(paste("no error collection code for", extension), "Missing Code")
+  }
+  
+  # Add points to errWarn
+  makeDock = function(dtf, col, ptsLost, maxDock) {
+    if (!any(dtf[, col])) {
+      return(NULL)
+    }
+    thisDock = rep(ptsLost, sum(dtf[, col]))
+    if (sum(thisDock) > maxDock) {
+      cs = cumsum(thisDock)
+      csOK = which.max(cs <= maxDock)
+      thisDock[csOK+1] = maxDock - cs[csOK]
+      if (length(thisDock) > csOK+1)
+        thisDock[(csOK+2):length(thisDock)] = 0
+    }
+    return(thisDock)
+  }
+  if (!is.null(errWarn)) {
+    warnDock = makeDock(errWarn, "warn", rubric[["warnPtsLost"]], rubric[["maxWarnPtsLost"]])
+    errDock = makeDock(errWarn, "err", rubric[["errPtsLost"]], rubric[["maxErrPtsLost"]])
+    errWarn$dock = c(warnDock, errDock)
+  }
+  
   # Both save and return the final data.frame
-  save(problems, file=file.path(path, "outputProblems.RData"))
-  return(problems)
+  save(problems, errWarn, file=file.path(path, "outputProblems.RData"))
+  return(list(problems, errWarn))
 }  # end checkOutput()
 
 
@@ -1725,7 +1755,8 @@ codeAnalysisToTags = function(path, fname) {
 ## Output analysis to tags
 outputAnalysisToTags = function(path, fname) {
   varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
-  if (is(varLoaded, "try-error") || length(varLoaded) != 1 || varLoaded != "problems") {
+  if (is(varLoaded, "try-error") || length(varLoaded) != 2 ||
+      any(is.na(match(varLoaded, c("problems", "errWarn"))))) {
     dualAlert("Grading View Error", "Bad 'outputProblems.RData' file")
     tgs = p("not viewable")
     attr(tgs, "dock") = NA
@@ -1760,6 +1791,59 @@ unescape_html <- function(str){
   xml2::xml_text(xml2::read_html(paste0("<x>", str, "</x>")))
 }
 
+
+# Collect errors and warnings for R output
+collectErrorsSAS = function(fname, ignore=NULL) {
+  text = try(readLines(fname, warn=FALSE), silent=TRUE)
+  if (is(text, "try-error")) {
+    dualAlert(paste("Cannot open", fname), "No SAS log file")
+    return(NULL)
+  }
+  N = length(text)
+  warnStart = grep("^WARNING[-\\s\\d]*:", text)
+  
+  findEnd = function(start, nBlank=9) {
+    sapply(start,
+           function(line, nBlank) {
+             if (line == N) return(line)
+             moreText = text[(line+1):min(N, line+3)]
+             more = grepl(paste0("^[ ]{", nBlank, "}[^ ]"), moreText)
+             mrle = rle(more)
+             if (mrle$values[1] == FALSE) return(line)
+             return(line + mrle$lengths[1])
+           }, nBlank=nBlank)
+  }
+  
+  getMsg = function(start, end) {
+    apply(cbind(start, end), MARGIN=1,
+          function(se) {
+            txt = trimws(gsub("^(.*?)(: )(.*)", "\\3", text[se[1]]))
+            if (se[2] > se[1]) {
+              txt = paste(txt, trimws(text[(se[1]+1):se[2]]), collapse="")
+            }
+            return(txt)
+          })
+  }
+  
+  if (length(warnStart) > 0) {
+    warnEnd = findEnd(warnStart)
+    warnMsg = getMsg(warnStart, warnEnd)  
+    info = data.frame(warn=TRUE, err=FALSE, message=warnMsg)
+  } else {
+    info = NULL
+  }
+
+  errStart = grep("^ERROR:", text)
+  if (length(errStart) > 0) {
+    errEnd = findEnd(errStart, nBlank=7)
+    errMsg = getMsg(errStart, errEnd)
+    info = rbind(info, data.frame(warn=FALSE, err=TRUE, message=errMsg))
+  }
+  
+  return(info)
+  
+}
+
 # Collect errors and warnings for R output
 collectErrorsR = function(text, ignore=NULL) {
 }
@@ -1773,6 +1857,12 @@ collectErrorsRmd = function(text, ignore=NULL) {
     attr(msg, "dock") = NA
     return(msg)
   }
+  if (length(startAll) == 0)
+    return(data.frame(start=integer(0), stop=integer(0),
+                      warn=logical(0), err=logical(0),
+                      message=character(0),
+                      causeN=character(0), cause=character(0)))
+  
   startErr = grep("^<pre><code>## Error", text)
   startWarn = grep("^<pre><code>## Warning", text)
   info = data.frame(start=startAll, stop=stopAll, warn=FALSE, err=FALSE,
