@@ -1760,6 +1760,7 @@ codeAnalysisToTags = function(path, fname) {
 
 ## Output analysis to tags
 outputAnalysisToTags = function(path, fname) {
+  #browser()
   varLoaded = try(load(file.path(path, "outputProblems.RData")), silent=TRUE)
   if (is(varLoaded, "try-error") || length(varLoaded) != 2 ||
       any(is.na(match(varLoaded, c("problems", "errWarn"))))) {
@@ -1769,7 +1770,7 @@ outputAnalysisToTags = function(path, fname) {
     return()
   } 
 
-  if (sum(problems$mention) == 0 && is.null(errWarn)) {
+  if ((is.null(problems) || sum(problems$mention) == 0) && is.null(errWarn)) {
     tgs = p("All good (nothing to mention)")
     attr(tgs, "dock") = 0 # sum(problems$dock)
     return(tgs)
@@ -1807,21 +1808,25 @@ outputAnalysisToTags = function(path, fname) {
     }
   }
   
-  problems = problems[problems$mention == TRUE, ]
-  if (nrow(problems) > 0) {
-    probTags = lapply(1:nrow(problems),
-                      function(lineNum) {
-                        line = problems[lineNum, ]
-                        pts = line[['pts']]
-                        p(paste0(ifelse(pts < 0, 
-                                        paste0("Bonus of ", abs(pts), " for"),
-                                        ifelse(pts==0, "Zero penalty for",
-                                               paste0(pts, " points lost for"))),
-                                 ifelse(line[['anathema']], " output anathema (",
-                                        " missing output ("),
-                                 line[['msg']], ") in '", line[['file']], "'."))
-                      })
-    names(probTags) = NULL # Needed!!!
+  if (is.null(problems)) {
+    probTags = NULL
+  } else {
+    problems = problems[problems$mention == TRUE, ]
+    if (nrow(problems) > 0) {
+      probTags = lapply(1:nrow(problems),
+                        function(lineNum) {
+                          line = problems[lineNum, ]
+                          pts = line[['pts']]
+                          p(paste0(ifelse(pts < 0, 
+                                          paste0("Bonus of ", abs(pts), " for"),
+                                          ifelse(pts==0, "Zero penalty for",
+                                                 paste0(pts, " points lost for"))),
+                                   ifelse(line[['anathema']], " output anathema (",
+                                          " missing output ("),
+                                   line[['msg']], ") in '", line[['file']], "'."))
+                        })
+      names(probTags) = NULL # Needed!!!
+    }
   }
   tgs = do.call(shiny::tags$div, c(errWarnTags, probTags))
   attr(tgs, "dock") = list(errWarn=sum(errWarn$dock), problems=sum(problems$dock))
@@ -1889,7 +1894,56 @@ collectErrorsSAS = function(fname, ignore=NULL) {
 }  # end collectErrorsSAS()
 
 # Collect errors and warnings for R output
-collectErrorsR = function(text, ignore=NULL) {
+collectErrorsR = function(fname, ignore=NULL) {
+  text = try(readLines(fname, warn=FALSE), silent=TRUE)
+  if (is(text, "try-error")) {
+    dualAlert(paste("Cannot open", fname), "No SAS log file")
+    return(NULL)
+  }
+  N = length(text)
+  info = NULL
+  finalWarn = NULL
+  errLoc = grep("^Error in", text)
+  if (length(errLoc) > 1) browser()
+  if (length(errLoc) == 1) {
+    if (text[N] != "Execution halted") browser()
+    errText = text[errLoc:(N-1)]
+    warnLoc = grep("^In addition: Warning message:", errText)
+    if (length(warnLoc) > 0) {
+      warnLoc = warnLoc[1]  # shouldn't be needed
+      warnText = errText[warnLoc:length(errText)]
+      errText = errText[1:(warnLoc - 1)]
+      warnMsg = paste(trimws(warnText), collapse=" ")
+      finalWarn = data.frame(err=FALSE, warn=TRUE, message=warnMsg)
+    }
+    errMsg = paste(trimws(errText), collapse=" ")
+    info = rbind(info,
+                 data.frame(err=TRUE, warn=FALSE, message=errMsg))
+  }
+  
+  warnStart = grep("^Warning message:", text)
+  if (length(warnStart) == 0) return(errWarn)
+  warnEnd = sapply(warnStart,
+                   function(line) {
+                     wText = text[min(N, line+1):min(N, line+3)]
+                     last = grep("^> ", wText)
+                     if (length(last) == 0) {
+                       last = line + length(wText) - 1
+                     } else {
+                       last = line + min(last) - 1
+                     }
+                     return(last)
+                   })
+  info = rbind(info,
+               data.frame(err=FALSE, warn=TRUE,
+                          message=apply(cbind(warnStart, warnEnd),
+                                        MARGIN=1,
+                                        function(se) {
+                                          paste(trimws(text[se[1]:se[2]]),
+                                                collapse=" ")
+                                        })),
+               finalWarn)
+  return(info)
 }  # end collectErrorsR()
 
 # Collect errors and warnings for Rmd output
