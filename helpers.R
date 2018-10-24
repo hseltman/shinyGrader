@@ -1591,34 +1591,40 @@ checkOutput = function(path, cf, rubric) {
   # Setup to check output
   fromAnathema = rep(c(FALSE, TRUE), c(nReq, nAnath))
   both = c(outputReq, outputAnath)
-  # Get a list of data.frames of specification results, one per combo of file and Req vs. Anath
-  if (all(sapply(both, function(x) length(x)==0))) {
-    return(NULL)
-  }
-  outputProblems = lapply(seq(along.with=both), 
-                          function(index) {
-                            file = names(both)[index]
-                            anathema = fromAnathema[index]
-                            specs = both[[index]]
-                            txt = try(suppressWarnings(readLines(file.path(path, file), warn=FALSE)), silent=TRUE)
-                            if (is(txt, "try-error")) {
-                              fileFound = FALSE
-                              txt = ""
-                            } else {
-                              fileFound = TRUE
-                            }
-                            dtf = testSpecs(specs, txt)
-                            
-                            if (!is.null(dtf)) dtf = cbind(file=file, dtf, anathema=anathema)
-                            
-                            return(dtf)
-                          }
-  )
   
-  problems = do.call(rbind, outputProblems)
-  problems$mention = (problems$found == problems$anathema)  & !problems$badRE
-  problems$dock = 0
-  problems$dock[problems$mention] = problems$pts[problems$mention]
+  # Get a list of data.frames of specification results, one per combo
+  # of file and Req vs. Anath
+  if (all(sapply(both, function(x) length(x)==0))) {
+    problems = NULL
+  } else {
+    outputProblems = lapply(seq(along.with=both), 
+                            function(index) {
+                              file = names(both)[index]
+                              anathema = fromAnathema[index]
+                              specs = both[[index]]
+                              txt = try(suppressWarnings(
+                                          readLines(file.path(path, file),
+                                                    warn=FALSE)),
+                                        silent=TRUE)
+                              if (is(txt, "try-error")) {
+                                fileFound = FALSE
+                                txt = ""
+                              } else {
+                                fileFound = TRUE
+                              }
+                              dtf = testSpecs(specs, txt)
+                              
+                              if (!is.null(dtf)) dtf = cbind(file=file, dtf, anathema=anathema)
+                              
+                              return(dtf)
+                            }
+    )
+    
+    problems = do.call(rbind, outputProblems)
+    problems$mention = (problems$found == problems$anathema)  & !problems$badRE
+    problems$dock = 0
+    problems$dock[problems$mention] = problems$pts[problems$mention]
+  }
   
   if (extension == "r") {
     errWarn = collectErrorsR(file.path(path, outName))
@@ -1629,7 +1635,7 @@ checkOutput = function(path, cf, rubric) {
   } else {
     dualAlert(paste("no error collection code for", extension), "Missing Code")
   }
-  
+
   # Add points to errWarn
   makeDock = function(dtf, col, ptsLost, maxDock) {
     if (!any(dtf[, col])) {
@@ -1761,12 +1767,48 @@ outputAnalysisToTags = function(path, fname) {
     tgs = p("not viewable")
     attr(tgs, "dock") = NA
     return()
-  } else if (sum(problems$mention) == 0) {
+  } 
+
+  if (sum(problems$mention) == 0 && is.null(errWarn)) {
     tgs = p("All good (nothing to mention)")
     attr(tgs, "dock") = 0 # sum(problems$dock)
     return(tgs)
+  }
+  
+  # Report and Warnings and/or Errors 
+  if (nrow(errWarn) == 0) {
+    errWarnTags = list(p("No errors or warnings"))
   } else {
-    problems = problems[problems$mention == TRUE, ]
+    if (any(errWarn$err)) {
+      errs = errWarn[errWarn$err, ]
+      nErrs = nrow(errs)
+      errWarnTags = c(list(p(paste(sum(errs[, "dock"]),
+                                   "points lost for",  nErrs,
+                                   "errors."))),
+                        lapply(1:nErrs,
+                               function(eNum) {
+                                 shiny::tags$p(paste0(eNum, ") ",
+                                   errs[eNum, "message"]))
+                               }))
+    }
+    if (any(errWarn$warn)) {
+      warns = errWarn[errWarn$warn, ]
+      nWarns = nrow(warns)
+      errWarnTags = c(errWarnTags,
+                      list(p(paste(sum(warns[, "dock"]),
+                                   "points lost for", nWarns,
+                                   "warnings."))),
+                        lapply(1:nWarns,
+                               function(wNum) {
+                                 shiny::tags$p(paste0(wNum, ") ",
+                                   warns[wNum, "message"]))
+                               }))
+      names(errWarnTags) = NULL # Needed!!!
+    }
+  }
+  
+  problems = problems[problems$mention == TRUE, ]
+  if (nrow(problems) > 0) {
     probTags = lapply(1:nrow(problems),
                       function(lineNum) {
                         line = problems[lineNum, ]
@@ -1780,11 +1822,13 @@ outputAnalysisToTags = function(path, fname) {
                                  line[['msg']], ") in '", line[['file']], "'."))
                       })
     names(probTags) = NULL # Needed!!!
-    tgs = do.call(shiny::tags$div, probTags)
-    attr(tgs, "dock") = sum(problems$dock)
-    return(tgs)
   }
-}
+  tgs = do.call(shiny::tags$div, c(errWarnTags, probTags))
+  attr(tgs, "dock") = list(errWarn=sum(errWarn$dock), problems=sum(problems$dock))
+  return(tgs)
+}  # end outputAnalysisToTags()
+
+
 # Un-escape HTML
 # https://stackoverflow.com/questions/5060076/convert-html-character-entity-encoding-in-r
 unescape_html <- function(str){
@@ -1842,14 +1886,20 @@ collectErrorsSAS = function(fname, ignore=NULL) {
   
   return(info)
   
-}
+}  # end collectErrorsSAS()
 
 # Collect errors and warnings for R output
 collectErrorsR = function(text, ignore=NULL) {
-}
+}  # end collectErrorsR()
 
 # Collect errors and warnings for Rmd output
-collectErrorsRmd = function(text, ignore=NULL) {
+collectErrorsRmd = function(fname, ignore=NULL) {
+  text = try(readLines(fname, warn=FALSE), silent=TRUE)
+  if (is(text, "try-error")) {
+    dualAlert(paste("Cannot open", fname), "No Rmd html file")
+    return(NULL)
+  }
+
   startAll = grep("^<pre><code", text)
   stopAll = grep("^</code></pre>", text)
   if (length(stopAll) != length(startAll)) {
@@ -1913,8 +1963,7 @@ collectErrorsRmd = function(text, ignore=NULL) {
                               cause = as.character(closest[length(closest)])
                             return(cause)
                           })
-  info = info[EW, ]
-  info$dock = 222
+  info = info[EW, c("warn", "err", "message")]
   return(info)
-}
+}  # end collectErrorsRmd()
 
