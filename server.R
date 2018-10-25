@@ -801,7 +801,7 @@ function(input, output, session) {
       return(div(tgs, p(paste("dock", attr(tgs, "dock")))))
     } else if (what == "Output Analysis") {
       tgs = outputAnalysisToTags(path, what)
-      return(div(tgs, p(paste("Output dock =", sum(unlist(attr(tgs, "dock"), sum))))))
+      return(div(tgs, br(), strong(paste("Output dock =", sum(unlist(attr(tgs, "dock"), sum))))))
     } else if (extension == "html") {
       # Note: this depends on "addResourcePath("shinyGrader", file.expand("~"))
       tgs = tags$iframe(src = file.path("/shinyGrader", 
