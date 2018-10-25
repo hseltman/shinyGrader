@@ -100,7 +100,7 @@ CANVAS_ROSTER_DEFAULTS = list(
 CANVAS_FILENAME_NAME_FORMAT = "lastfirst"
 
 # Maximum number of problems in an assignment
-PROBLEM_COUNT = 3
+PROBLEM_COUNT = 4
 
 
 # Create an intial global configuration from hardcoded defaults,
