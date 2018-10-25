@@ -1632,6 +1632,8 @@ checkOutput = function(path, cf, rubric) {
     errWarn = collectErrorsRmd(file.path(path, outName))
   } else if (extension == 'sas') {
     errWarn = collectErrorsSAS(file.path(path, changeExtension(runName, "log")))
+  } else if (extension == 'py') {
+    errWarn = collectErrorsPy(file.path(path, changeExtension(runName, "err")))
   } else {
     dualAlert(paste("no error collection code for", extension), "Missing Code")
   }
@@ -1775,6 +1777,37 @@ outputAnalysisToTags = function(path, fname) {
     attr(tgs, "dock") = 0 # sum(problems$dock)
     return(tgs)
   }
+
+  # Make output tags from a data.frame with "message" and "dock"
+  # columns.
+  # Arguments:
+  #   dtf: the data frame
+  #   id: text in the output ("error" or "warning")
+  # Value:
+  #   Shiny tags representing the display of error or warning info
+  #
+  numberedMessages = function(dtf, id="error") {
+    nMsg = nrow(dtf)
+    header = list(p(strong(paste0(sum(dtf[, "dock"]),
+                          " points lost for ",  nMsg, " ",
+                          id, ifelse(nMsg==1, "", "s"), "."))))
+    msgs = lapply(seq(along=dtf$message),
+                  function(mNum) {
+                    msg = strsplit(dtf$message[[mNum]], "\n")[[1]]
+                    code = paste0("shiny::tags$div(strong('", mNum, ")'), msg[1]")
+                    if (length(msg) > 1) {
+                      for (ii in 2:length(msg)) {
+                        code = paste0(code,
+                                      ", shiny::tags$br(),",
+                                      "HTML('&nbsp;&nbsp;&nbsp'), ",
+                                      "msg[", ii, "]")
+                      }
+                    }
+                    code = paste0(code, ")")
+                    return(eval(parse(text=code)))
+                  })
+    return(c(header, msgs))
+  }
   
   # Report and Warnings and/or Errors 
   if (nrow(errWarn) == 0) {
@@ -1782,28 +1815,11 @@ outputAnalysisToTags = function(path, fname) {
   } else {
     if (any(errWarn$err)) {
       errs = errWarn[errWarn$err, ]
-      nErrs = nrow(errs)
-      errWarnTags = c(list(p(paste(sum(errs[, "dock"]),
-                                   "points lost for",  nErrs,
-                                   "errors."))),
-                        lapply(1:nErrs,
-                               function(eNum) {
-                                 shiny::tags$p(paste0(eNum, ") ",
-                                   errs[eNum, "message"]))
-                               }))
+      errWarnTags = numberedMessages(errs, "error")
     }
     if (any(errWarn$warn)) {
       warns = errWarn[errWarn$warn, ]
-      nWarns = nrow(warns)
-      errWarnTags = c(errWarnTags,
-                      list(p(paste(sum(warns[, "dock"]),
-                                   "points lost for", nWarns,
-                                   "warnings."))),
-                        lapply(1:nWarns,
-                               function(wNum) {
-                                 shiny::tags$p(paste0(wNum, ") ",
-                                   warns[wNum, "message"]))
-                               }))
+      errWarnTags = numberedMessages(warns, "warning")
       names(errWarnTags) = NULL # Needed!!!
     }
   }
@@ -1877,7 +1893,7 @@ collectErrorsSAS = function(fname, ignore=NULL) {
   if (length(warnStart) > 0) {
     warnEnd = findEnd(warnStart)
     warnMsg = getMsg(warnStart, warnEnd)  
-    info = data.frame(warn=TRUE, err=FALSE, message=warnMsg)
+    info = data.frame(warn=TRUE, err=FALSE, message=I(warnMsg))
   } else {
     info = NULL
   }
@@ -1886,7 +1902,7 @@ collectErrorsSAS = function(fname, ignore=NULL) {
   if (length(errStart) > 0) {
     errEnd = findEnd(errStart, nBlank=7)
     errMsg = getMsg(errStart, errEnd)
-    info = rbind(info, data.frame(warn=FALSE, err=TRUE, message=errMsg))
+    info = rbind(info, data.frame(warn=FALSE, err=TRUE, message=I(errMsg)))
   }
   
   return(info)
@@ -1914,11 +1930,11 @@ collectErrorsR = function(fname, ignore=NULL) {
       warnText = errText[warnLoc:length(errText)]
       errText = errText[1:(warnLoc - 1)]
       warnMsg = paste(trimws(warnText), collapse=" ")
-      finalWarn = data.frame(err=FALSE, warn=TRUE, message=warnMsg)
+      finalWarn = data.frame(err=FALSE, warn=TRUE, message=I(warnMsg))
     }
     errMsg = paste(trimws(errText), collapse=" ")
     info = rbind(info,
-                 data.frame(err=TRUE, warn=FALSE, message=errMsg))
+                 data.frame(err=TRUE, warn=FALSE, message=I(errMsg)))
   }
   
   warnStart = grep("^Warning message:", text)
@@ -1936,15 +1952,63 @@ collectErrorsR = function(fname, ignore=NULL) {
                    })
   info = rbind(info,
                data.frame(err=FALSE, warn=TRUE,
-                          message=apply(cbind(warnStart, warnEnd),
-                                        MARGIN=1,
-                                        function(se) {
-                                          paste(trimws(text[se[1]:se[2]]),
-                                                collapse=" ")
-                                        })),
+                          message=I(apply(cbind(warnStart, warnEnd),
+                                          MARGIN=1,
+                                          function(se) {
+                                            paste(trimws(text[se[1]:se[2]]),
+                                                  collapse=" ")
+                                          }))),
                finalWarn)
   return(info)
 }  # end collectErrorsR()
+
+# Collect errors and warnings for Python output
+collectErrorsPy = function(fname, ignore=NULL) {
+  text = try(readLines(fname, warn=FALSE), silent=TRUE)
+  if (is(text, "try-error")) {
+    dualAlert(paste("Cannot open", fname), "No SAS log file")
+    return(NULL)
+  }
+  N = length(text)
+  info = NULL
+  #browser()
+  
+  # Error text goes last from "Traceback ..." to "spamError: eggs".
+  # It may be preceeded by warnings, which start with
+  # "... myFile:myLine#: fooWarning: ..." and have no specific end
+  # indicator.
+  
+  if (any(grepl("^[a-zA-Z]+Error: ", text))) {
+    errStart = grep("^Traceback ", text)
+    if (length(errStart) != 1 || errStart[1] == N) {
+      dualWarning("Python error message format unrecognized",
+                  "Unrecognized error format")
+      return(NULL)
+    }
+    errText = trimws(text[(errStart+1):N])
+    info = data.frame(err=TRUE, warn=FALSE, 
+                      message=I(paste(errText, collapse="\n ")))
+    if (errStart == 1) return(info)
+    text = text[1:(errStart-1)]
+  }
+
+  warnStart = grep("\\d: [a-zA-Z]+Warning: ", text)
+  nWarn = length(warnStart)
+  if (nWarn > 0) {
+    warnEnd = c(warnStart-1, N)[-1]
+    warnMsgs = apply(cbind(warnStart, warnEnd),
+                     MARGIN=1,
+                     FUN=function(se) {
+                           txt = trimws(text[se[1]:se[2]])
+                           return(paste(txt, collapse="\n "))
+                     })
+    info = rbind(info,
+                 data.frame(err=rep(FALSE, nWarn),
+                            warn=rep(TRUE, nWarn),
+                            message=I(warnMsgs)))
+  }
+  return(info)
+}  # end collectErrorsPy()
 
 # Collect errors and warnings for Rmd output
 collectErrorsRmd = function(fname, ignore=NULL) {
