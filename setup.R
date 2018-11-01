@@ -39,7 +39,7 @@ CANVAS_LATE_RE = "late"
 CANVAS_RESUBMIT_RE = "-[0-9]{1,2}"
 #
 FILE_FORMAT_RE = list(
-  b = "[-a-zA-Z0-9 _.]+",
+  b = "[-a-zA-Z0-9 _. ()]+",
   e = "[.][a-zA-Z][a-zA-Z0-9]{0,3}",
   s = "[a-zA-Z0-9']+",  # numbers appear in Canvas groups
   g = "[a-zA-Z]+",
