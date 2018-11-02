@@ -1951,7 +1951,7 @@ collectErrorsR = function(fname, ignore=NULL) {
   }
   
   warnStart = grep("^Warning message:", text)
-  if (length(warnStart) == 0) return(errWarn)
+  if (length(warnStart) == 0) return(info)
   warnEnd = sapply(warnStart,
                    function(line) {
                      wText = text[min(N, line+1):min(N, line+3)]
