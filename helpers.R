@@ -23,7 +23,9 @@
 #   parseSpec()
 #   runCode()
 #   checkEnables()
-#   collectErrors()
+#   collectErrorsRmd()
+#   collectErrorsSAS()
+#   collectErrorsPy()
 
 # Convert a special kind of text file into a named list.
 #
@@ -1639,17 +1641,28 @@ checkOutput = function(path, cf, rubric) {
   }
 
   # Add points to errWarn
+  # 'dtf' is "errWarn", 'col' is "err" or "warn" (result is logical).
+  # Points lost per item is 'ptsLost' up to 'maxDock'.
   makeDock = function(dtf, col, ptsLost, maxDock) {
-    if (!any(dtf[, col])) {
+    if (!col %in% names(dtf) || !is.logical(dtf[, col]))
+      stop("Bad input")
+    colTrue = dtf[, col]
+    N = sum(colTrue)
+    if (N == 0) {
       return(NULL)
     }
-    thisDock = rep(ptsLost, sum(dtf[, col]))
+    thisDock = rep(ptsLost, N)
     if (sum(thisDock) > maxDock) {
       cs = cumsum(thisDock)
-      csOK = which.max(cs <= maxDock)
-      thisDock[csOK+1] = maxDock - cs[csOK]
-      if (length(thisDock) > csOK+1)
-        thisDock[(csOK+2):length(thisDock)] = 0
+      csOK = rle(cs <= maxDock)
+      if (csOK$values[1] == FALSE) {
+        thisDock = rep(0, N)
+      } else {
+        last = csOK$lengths[1]
+        thisDock[last+1] = maxDock - cs[last]
+        if (length(thisDock) > last+1)
+          thisDock[(last+2):length(thisDock)] = 0
+      }
     }
     return(thisDock)
   }
@@ -1819,9 +1832,9 @@ outputAnalysisToTags = function(path, fname) {
     }
     if (any(errWarn$warn)) {
       warns = errWarn[errWarn$warn, ]
-      errWarnTags = numberedMessages(warns, "warning")
-      names(errWarnTags) = NULL # Needed!!!
+      errWarnTags = c(errWarnTags, numberedMessages(warns, "warning"))
     }
+    names(errWarnTags) = NULL # Needed!!!
   }
   
   if (is.null(problems)) {
