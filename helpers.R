@@ -1823,7 +1823,7 @@ outputAnalysisToTags = function(path, fname) {
   }
   
   # Report and Warnings and/or Errors 
-  if (nrow(errWarn) == 0) {
+  if (is.null(errWarn) || nrow(errWarn) == 0) {
     errWarnTags = list(p("No errors or warnings"))
   } else {
     if (any(errWarn$err)) {
