@@ -773,8 +773,8 @@ matchFile = function(fs, studentFiles, otherFiles) {
       uMatches = unique(studentFiles[indices, "submitName"])
       if (length(uMatches) > 0) {
         rtn = NULL
-        for (m in length(uMatches)) {
-          matched = studentFiles[studentFiles$baseFileName == m, ]
+        for (index in indices) {
+          matched = studentFiles[index, ]
           latest = which.max(matched$resubmitNumber)
           return(rbind(rtn, data.frame(inName=I(matched[latest, "canvasName"]),
                                        outName=I(fs),
