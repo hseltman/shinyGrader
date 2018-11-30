@@ -1832,14 +1832,17 @@ outputAnalysisToTags = function(path, fname) {
     }
     if (any(errWarn$warn)) {
       warns = errWarn[errWarn$warn, ]
-      errWarnTags = c(errWarnTags, numberedMessages(warns, "warning"))
+      if (exists("errWarnTags")) {
+        errWarnTags = c(errWarnTags, numberedMessages(warns, "warning"))
+      } else {
+        errWarnTags = numberedMessages(warns, "warning")
+      }
     }
     names(errWarnTags) = NULL # Needed!!!
   }
   
-  if (is.null(problems)) {
-    probTags = NULL
-  } else {
+  probTags = NULL
+  if (!is.null(problems)) {
     problems = problems[problems$mention == TRUE, ]
     if (nrow(problems) > 0) {
       probTags = lapply(1:nrow(problems),
