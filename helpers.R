@@ -1547,9 +1547,13 @@ runSas = function(runFile) {
   return(rtn)
 }
 
+# get file extension(s) for one or more strings
 getExtension = function(fname) {
-  if (!grepl("[.]", fname)) return("")
-  tolower(gsub("(.*)([.])(.*)", "\\3", fname))
+  hasPeriod = grep("[.]", fname)
+  if (length(hasPeriod) == 0) return("")
+  fname[hasPeriod] = tolower(gsub("(.*)([.])(.*)", "\\3", fname[hasPeriod]))
+  fname[setdiff(1:length(fname), hasPeriod)] = ""
+  return(fname)
 }
 
 changeExtension = function(fname, ext) {
