@@ -504,6 +504,8 @@ function(input, output, session) {
       files = c(runFile,
                 currentFiles$reqDf$outName[currentFiles$reqDf$directory == "."],
                 currentFiles$optDf$outName[currentFiles$optDf$directory == "."])
+      sasBinary = getExtension(files) %in% c("sas7bdat", "sas7bcat")
+      if (length(sasBinary) > 0) files = files[!sasBinary]
       if (file.exists(file.path(path, "codeProblems.RData"))) {
         files = c(files, "Code Analysis")
       }
@@ -511,6 +513,10 @@ function(input, output, session) {
         htmlFile = changeExtension(runFile, "html")
         if (file.exists(file.path(path, htmlFile))) {
           files = c(files, htmlFile)
+          logFile = changeExtension(runFile, "log")
+          if (file.exists(file.path(path, logFile))) {
+            files = c(files, logFile)
+          }
         } else {
           outFile = changeExtension(runFile, "out")
           if (file.exists(file.path(path, outFile))) {
