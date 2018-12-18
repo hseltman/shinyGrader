@@ -1694,15 +1694,23 @@ checkOutput = function(path, cf, rubric) {
 # From a 'currentFiles' list, determine appropriateness of
 # enabling analyzeCode, runCode, and analyzeOutput.
 #
+# Is this messed up by writing a new rubric file even when unchanged??
+#
 checkEnables = function(path, cf, probNum) {
   if(length(cf$runMissing) == 0) {
     runName = cf$runDf$inName
+    # cf$runDf$outName is the sandbox name of the run (source code) file
+    # Here, "outName" is the output file name
     outName = file.path(path, changeExtension(cf$runDf$outName, "out"))
     runIsCanvas = cf$runDf$canvasFlag
   } else {
     runName = cf$runMissing
     outName = file.path(path, changeExtension(runName, "out"))
     runIsCanvas = FALSE
+  }
+  # Special case for html output
+  if (getExtension(runName) %in% c("sas", "Rmd")) {
+    outName = changeExtension(outName, "html")
   }
   rubricName = paste0("rubric", probNum, ".RData")
   codeProbName = file.path(path, "codeProblems.RData")
@@ -1711,36 +1719,55 @@ checkEnables = function(path, cf, probNum) {
   
   analyzeCode = runCode = analyzeOutput = FALSE
   
-  rubricTime = ifelse(file.exists(rubricName),
-                      file.info(rubricName)$mtime,
-                      earlyDate)
+  # Note: using an ifelse() drops the POSIXct attribute!
+  if (file.exists(rubricName)) {
+    rubricTime = file.info(rubricName)$mtime
+  } else {
+    rubricTime = earlyDate
+  }
   hasRun = file.exists(runName)
-  runFileTime = ifelse(hasRun, ifelse(length(cf$runMissing) > 0,
-                                      file.info(runName)$mtime,
-                                      cf$runDf$modifyTime),
-                   earlyDate)
+  if (hasRun) {
+    if (length(cf$runMissing) > 0) {
+      runFileTime = file.info(runName)$mtime
+    } else {
+      runFileTime = cf$runDf$modifyTime
+    }
+  } else {
+    runFileTime = earlyDate 
+  }
+
   hasUserCode = (hasRun && runIsCanvas) ||
                 (!is.null(cf$reqDf) && any(cf$reqDf$canvasFlag)) ||
                 (!is.null(cf$optDf) && any(cf$optDf$canvasFlag))
   missingReq = length(cf$reqMissing) > 0
-  newestInput = max(runFileTime, cf$reqDf$modifyTime, cf$optDf$modifyTime)
-  codeProblemsTime = ifelse(file.exists(codeProbName),
-                            file.info(codeProbName)$mtime,
-                            earlyDate)
+  newestInputTime = max(runFileTime, cf$reqDf$modifyTime, cf$optDf$modifyTime)
+  if (file.exists(codeProbName)) {
+    codeProblemsTime = file.info(codeProbName)$mtime
+  } else {
+    codeProblemsTime = earlyDate
+  }
+
   hasOutput = file.exists(outName)
-  outTime = ifelse(hasOutput, file.info(outName)$mtime, earlyDate)
-  outputProblemsTime = ifelse(file.exists(outputProbName),
-                              file.info(outputProbName)$mtime,
-                              earlyDate)
+  if (hasOutput) {
+    outTime = file.info(outName)$mtime
+  } else {
+    outTime = earlyDate
+  }
   
+  if (file.exists(outputProbName)) {
+  outputProblemsTime = file.info(outputProbName)$mtime
+  } else {
+    outputProblemsTime = earlyDate
+  }
+
   analyzeCode = hasUserCode && 
                 (codeProblemsTime == earlyDate ||
-                 newestInput > codeProblemsTime ||
+                 newestInputTime > codeProblemsTime ||
                  rubricTime > codeProblemsTime)
   
   runCode = hasRun && !missingReq &&
             (!hasOutput ||
-             outTime < newestInput ||
+             outTime < newestInputTime ||
              outTime < rubricTime)
   
   analyzeOutput = hasOutput && outTime >= runFileTime &&
