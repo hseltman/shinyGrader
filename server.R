@@ -406,6 +406,21 @@ function(input, output, session) {
   }, ignoreInit=TRUE)
 
 
+  # Reset grading buttons
+  observeEvent(input$resetGradingButtons, {
+    rubNow = rubrics()
+    probNum = as.numeric(input$currentProblem)
+    rostNow = roster$roster
+    studentInfo = rostNow[as.numeric(input$selectStudent), ]
+    cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
+    path = thisPath()
+    checks = reEnables(path, cf, probNum)
+    # Note: toggleState() does not allow 'condition' to have names
+    shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
+    shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
+    shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
+  }, ignoreInit=TRUE)
+  
   # Task to be done when tabs are selected/deselected
   # Assure that when user moves away from the problem tabs, any dirty
   # rubrics are saved.

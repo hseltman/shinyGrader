@@ -23,6 +23,8 @@
 #   parseSpec()
 #   runCode()
 #   checkEnables()
+#   checkSandboxDates()
+#   reEnables()
 #   collectErrorsRmd()
 #   collectErrorsSAS()
 #   collectErrorsPy()
@@ -1691,12 +1693,10 @@ checkOutput = function(path, cf, rubric) {
 }  # end checkOutput()
 
 
-# From a 'currentFiles' list, determine appropriateness of
-# enabling analyzeCode, runCode, and analyzeOutput.
-#
-# Is this messed up by writing a new rubric file even when unchanged??
-#
-checkEnables = function(path, cf, probNum) {
+# From a 'currentFiles' list, get information needed for figuring out
+# the current state of the sandbox vis-a-vis dependent files and file
+# dates.
+checkSandboxDates = function(path, cf, probNum) {
   if(length(cf$runMissing) == 0) {
     runName = cf$runDf$inName
     # cf$runDf$outName is the sandbox name of the run (source code) file
@@ -1735,10 +1735,10 @@ checkEnables = function(path, cf, probNum) {
   } else {
     runFileTime = earlyDate 
   }
-
+  
   hasUserCode = (hasRun && runIsCanvas) ||
-                (!is.null(cf$reqDf) && any(cf$reqDf$canvasFlag)) ||
-                (!is.null(cf$optDf) && any(cf$optDf$canvasFlag))
+    (!is.null(cf$reqDf) && any(cf$reqDf$canvasFlag)) ||
+    (!is.null(cf$optDf) && any(cf$optDf$canvasFlag))
   missingReq = length(cf$reqMissing) > 0
   newestInputTime = max(runFileTime, cf$reqDf$modifyTime, cf$optDf$modifyTime)
   if (file.exists(codeProbName)) {
@@ -1746,7 +1746,7 @@ checkEnables = function(path, cf, probNum) {
   } else {
     codeProblemsTime = earlyDate
   }
-
+  
   hasOutput = file.exists(outName)
   if (hasOutput) {
     outTime = file.info(outName)$mtime
@@ -1755,29 +1755,60 @@ checkEnables = function(path, cf, probNum) {
   }
   
   if (file.exists(outputProbName)) {
-  outputProblemsTime = file.info(outputProbName)$mtime
+    outputProblemsTime = file.info(outputProbName)$mtime
   } else {
     outputProblemsTime = earlyDate
   }
 
-  analyzeCode = hasUserCode && 
-                (codeProblemsTime == earlyDate ||
-                 newestInputTime > codeProblemsTime ||
-                 rubricTime > codeProblemsTime)
+  return(list(hasUserCode=hasUserCode, codeProblemsTime=codeProblemsTime,
+              earlyDate=earlyDate, newestInputTime=newestInputTime,
+              rubricTime=rubricTime, hasRun=hasRun, missingReq=missingReq,
+              hasOutput=hasOutput, outTime=outTime, runFileTime=runFileTime,
+              outputProblemsTime=outputProblemsTime))
+}
+
+
+# From a 'currentFiles' list, determine appropriateness of
+# enabling analyzeCode, runCode, and analyzeOutput.
+#
+# Is this messed up by writing a new rubric file even when unchanged??
+#
+checkEnables = function(path, cf, probNum) {
+  info = checkSandboxDates(path, cf, probNum)
+
+  analyzeCode = with(info, hasUserCode && 
+                           (codeProblemsTime == earlyDate ||
+                           newestInputTime > codeProblemsTime ||
+                           rubricTime > codeProblemsTime))
   
-  runCode = hasRun && !missingReq &&
-            (!hasOutput ||
-             outTime < newestInputTime ||
-             outTime < rubricTime)
+  runCode = with(info, hasRun && !missingReq &&
+                       (!hasOutput ||
+                       outTime < newestInputTime ||
+                       outTime < rubricTime))
   
-  analyzeOutput = hasOutput && outTime >= runFileTime &&
-                  (outputProblemsTime < outTime ||
-                   outputProblemsTime < rubricTime)
+  analyzeOutput = with(info, hasOutput && outTime >= runFileTime &&
+                             (outputProblemsTime < outTime ||
+                             outputProblemsTime < rubricTime))
   
   return(c(analyzeCode=analyzeCode,
            runCode=runCode,
            analyzeOutput=analyzeOutput))
 }
+
+
+
+# From a 'currentFiles' list, determine appropriateness of
+# re-enabling analyzeCode, runCode, and analyzeOutput.
+#
+reEnables = function(path, cf, probNum) {
+  info = checkSandboxDates(path, cf, probNum)
+  runCode = with(info, hasRun && !missingReq)
+
+  return(c(analyzeCode=info$hasUserCode,
+           runCode=runCode,
+           analyzeOutput=info$hasOutput))
+}
+
 
 
 codeAnalysisToTags = function(path, fname) {
