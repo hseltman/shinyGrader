@@ -221,7 +221,7 @@ function(input, output, session) {
                   paste0("<strong>", basename(rostName), " (",
                          nrow(newRoster) - 1, " students)</strong>"))
                   
-  }, ignoreInit=TRUE)
+  }, ignoreInit=FALSE)  # may need to be TRUE for an empty initial folder
   
   # # Handle new roster
   # observeEvent(roster$serialNum, {
@@ -374,7 +374,6 @@ function(input, output, session) {
     cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
     currentFiles(cf)
     if (is.null(cf) || is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
-      browser()
       currentFiles(NULL)
       path = NULL
       shinyjs::disable("analyzeCode")
