@@ -1398,13 +1398,15 @@ checkCode = function(path, cf, rubric) {
 testSpecs = function(specs, txt) {
   # if (length(specs) == 0) {
   #   return(setNames(data.frame(matrix(ncol=6, nrow=0)),
-  #                   c("pts", "msg", "pattern", "fixed", "found", "badRE")))
+  #                   c("pts", "msg", "pattern", "fixed", "ignoreCase",
+  #                     "found", "badRE")))
   # }
   
   rslt = lapply(specs,
     function(spec) {
       pspec = parseSpec(spec)
-      found = try(grep(pspec$pattern, txt, fixed=pspec$fixed), silent=TRUE)
+      found = try(grep(pspec$pattern, txt, fixed=pspec$fixed, 
+                       ignore.case=pspec$ignoreCase), silent=TRUE)
       if (is(found, "try-error")) {
         err = as.character(attr(found, "condition"))
         err = sub('(.*)(, reason )(.*)', "\\3", err)
@@ -1468,11 +1470,18 @@ parseSpec = function(spec) {
   if (c1 == cN && c1 %in% c("'", '"')) {
     pattern = substring(pattern, 2, nchar(pattern) - 1)
     fixed = TRUE
+    ignoreCase = FALSE
   } else {
     fixed = FALSE
+    if (c1 == "~") {
+      ignoreCase = TRUE
+      pattern = substring(pattern, 2)
+    } else {
+      ignoreCase = FALSE
+    }
   }
   
-  return(data.frame(pts, msg=I(msg), pattern=I(pattern), fixed))
+  return(data.frame(pts, msg=I(msg), pattern=I(pattern), fixed, ignoreCase))
 }
 
 # Run R Code
