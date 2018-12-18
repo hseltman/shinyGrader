@@ -65,7 +65,8 @@ fluidPage(
       fluidRow(column(2, disabled(actionButton("analyzeCode", "Analyze code"))),
                column(2, disabled(actionButton("runCode", "Run code"))),
                column(2, disabled(actionButton("analyzeOutput", "Analyse output"))),
-               column(2, p(id="sandboxVersion", style="padding:7px;"))),
+               column(2, p(id="sandboxVersion", style="padding:7px;")),
+               column(2, actionButton("resetGradingButtons", "Reset  the buttons"))),
       radioButtons("gradeViewChoice", "View", choices="(none)", inline=TRUE),
       p(HTML("&nbsp;")),
       htmlOutput("gradeViewOutput")
