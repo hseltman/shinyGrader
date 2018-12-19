@@ -159,6 +159,9 @@ function(input, output, session) {
   }
   rm(problem)
 
+  # Keep track of current student's last version
+  lastVersion = reactiveVal(1)
+  
   # Keep track of last tab
   lastTab = reactiveVal("Assignment")
 
@@ -382,8 +385,11 @@ function(input, output, session) {
       htmlFile(NULL)
     } else {
       path = setupSandbox(studentInfo$shortEmail, cf, probNum)
-      shinyjs::html(id="sandboxVersion", 
-                    paste("<strong>Version =", basename(path), "</strong>"))
+      version = as.numeric(gsub("^.*[/\\]" ,"", path))
+      lastVersion(version)
+      updateSelectInput(session, "sandboxVersion",
+                        choices=setNames(1:version, paste("Version", 1:version)),
+                        selected=version)
       checks = checkEnables(path, cf, probNum)
       # Note: toggleState() does not allow 'condition' to have names
       shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
@@ -406,6 +412,17 @@ function(input, output, session) {
   }, ignoreInit=TRUE)
 
 
+  # Change sandbox version being viewed
+  observeEvent(input$sandboxVersion, {
+    version = as.numeric(input$sandboxVersion)
+    path = thisPath()
+    newPath = file.path(gsub("[/\\][0-9]+?$", "", path), version)
+    thisPath(newPath)
+    updateGradeViewChoice(currentFiles(), newPath)
+    # @@@@@@
+  }, ignoreInit=TRUE)
+  
+  
   # Reset grading buttons
   observeEvent(input$resetGradingButtons, {
     rubNow = rubrics()
@@ -485,22 +502,24 @@ function(input, output, session) {
       if (is.null(rubNow) || !any(sapply(rubNow, isProblemActive))) {
         currentFiles(NULL)
         path = setupSandbox(studentInfo$shortEmail, cf, probNum)
-        thisPath(path)
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
       } else {
         currentFiles(cf)
         path = setupSandbox(studentInfo$shortEmail, cf, probNum)
-        thisPath(path)
         checks = checkEnables(path, cf, probNum)
         # Note: 'condition' cannot have names
         shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
         shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
         shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
       }
-      shinyjs::html(id="sandboxVersion", 
-                    paste("<strong>Version =", basename(path), "</strong>"))
+      thisPath(path)
+      version = as.numeric(gsub("^.*[/\\]" ,"", path))
+      lastVersion(version)
+      
+      #shinyjs::html(id="sandboxVersion", 
+      #              paste("<strong>Version =", basename(path), "</strong>"))
       updateGradeViewChoice(cf, path)
     }
     
@@ -652,6 +671,8 @@ function(input, output, session) {
       studInfo = rostNow[studNum, ]
       cf = findCurrentFiles(studInfo$ID, allFiles(), rubNow)
       path = setupSandbox(studInfo$shortEmail, cf, probNum)
+      version = as.numeric(gsub("^.*[/\\]" ,"", path))
+      lastVersion(version)
       
       # Check code
       cc = checkCode(path, cf, rubNow)
