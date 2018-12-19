@@ -382,19 +382,23 @@ function(input, output, session) {
       shinyjs::disable("analyzeCode")
       shinyjs::disable("runCode")
       shinyjs::disable("analyzeOutput")
+      shinyjs::disable("resetGradingButtons")
       htmlFile(NULL)
     } else {
       path = setupSandbox(studentInfo$shortEmail, cf, probNum)
       version = as.numeric(gsub("^.*[/\\]" ,"", path))
       lastVersion(version)
       updateSelectInput(session, "sandboxVersion",
-                        choices=setNames(1:version, paste("Version", 1:version)),
+                        choices=setNames(1:version, 
+                                         paste("Version", 1:version, "of", version)),
                         selected=version)
       checks = checkEnables(path, cf, probNum)
       # Note: toggleState() does not allow 'condition' to have names
       shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
       shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
       shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
+      shinyjs::enable("resetGradingButtons")
+      
       runFile = cf$runDf[1, "outName"]
       if (is.null(runFile)) {
         htmlFile(NULL)
@@ -418,6 +422,11 @@ function(input, output, session) {
     path = thisPath()
     newPath = file.path(gsub("[/\\][0-9]+?$", "", path), version)
     thisPath(newPath)
+    if (lastVersion() != version) {
+      shinyjs::disable("resetGradingButtons")
+    } else {
+      shinyjs::enable("resetGradingButtons")
+    }
     updateGradeViewChoice(currentFiles(), newPath)
     # @@@@@@
   }, ignoreInit=TRUE)
@@ -425,17 +434,25 @@ function(input, output, session) {
   
   # Reset grading buttons
   observeEvent(input$resetGradingButtons, {
-    rubNow = rubrics()
-    probNum = as.numeric(input$currentProblem)
-    rostNow = roster$roster
-    studentInfo = rostNow[as.numeric(input$selectStudent), ]
-    cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
-    path = thisPath()
-    checks = reEnables(path, cf, probNum)
-    # Note: toggleState() does not allow 'condition' to have names
-    shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
-    shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
-    shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
+    if (lastVersion() != as.numeric(input$sandboxVersion)) {
+      shinyjs::disable("analyzeCode")
+      shinyjs::disable("runCode")
+      shinyjs::disable("analyzeOutput")
+      shinyjs::disable("resetGradingButtons")
+    } else {
+      rubNow = rubrics()
+      probNum = as.numeric(input$currentProblem)
+      rostNow = roster$roster
+      studentInfo = rostNow[as.numeric(input$selectStudent), ]
+      cf = findCurrentFiles(studentInfo$ID, allFiles(), rubNow[[probNum]])
+      path = thisPath()
+      checks = reEnables(path, cf, probNum)
+      # Note: toggleState() does not allow 'condition' to have names
+      shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
+      shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
+      shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
+      shinyjs::enable("resetGradingButtons")
+    }
   }, ignoreInit=TRUE)
   
   # Task to be done when tabs are selected/deselected
@@ -505,6 +522,7 @@ function(input, output, session) {
         shinyjs::disable("analyzeCode")
         shinyjs::disable("runCode")
         shinyjs::disable("analyzeOutput")
+        shinyjs::disable("resetGradingButtons")
       } else {
         currentFiles(cf)
         path = setupSandbox(studentInfo$shortEmail, cf, probNum)
@@ -513,6 +531,7 @@ function(input, output, session) {
         shinyjs::toggleState(id="analyzeCode", condition=as.vector(checks["analyzeCode"]))
         shinyjs::toggleState(id="runCode", condition=as.vector(checks["runCode"]))
         shinyjs::toggleState(id="analyzeOutput", condition=as.vector(checks["analyzeOutput"]))
+        shinyjs::enable("resetGradingButtons")
       }
       thisPath(path)
       version = as.numeric(gsub("^.*[/\\]" ,"", path))
