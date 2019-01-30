@@ -167,7 +167,7 @@ function(input, output, session) {
 
   # Possible html output
   htmlFile = reactiveVal(NULL)
-  # Current input$gradeViewChoices is more up-to-date than
+  # CurrentGradeViewChoices() is more up-to-date than
   # input$gradeViewChoices when updateRadioButtons() is used
   # for "gradeViewChoices".  This is needed to make the
   # render work for "gradeViewOutput" after updating "gradeViewChoices".
@@ -217,12 +217,15 @@ function(input, output, session) {
       # Let the app know that there is a new roster
       roster$roster = newRoster
       roster$serialNum = roster$serialNum + 1
+      N = nrow(newRoster) - 1
+    } else {
+      N = 0
     }
  
     if (!exists("newRoster") || is.null(newRoster) || !is.data.frame(newRoster)) browser()
     shinyjs::html(id="currentRoster", 
                   paste0("<strong>", basename(rostName), " (",
-                         nrow(newRoster) - 1, " students)</strong>"))
+                         N, " students)</strong>"))
                   
   }, ignoreInit=FALSE)  # may need to be TRUE for an empty initial folder
   
@@ -552,6 +555,7 @@ function(input, output, session) {
                          #choiceNames="(none)", choiceValues="(none)",
                          #selected="(none)")
     } else {
+      browser()
       runFile = currentFiles$runDf$outName
       files = c(runFile,
                 currentFiles$reqDf$outName[currentFiles$reqDf$directory == "."],
