@@ -219,10 +219,12 @@ function(input, output, session) {
       roster$serialNum = roster$serialNum + 1
       N = nrow(newRoster) - 1
     } else {
+      roster$serialNum = roster$serialNum + 1
+      roster$roster = staticRoster
       N = 0
     }
  
-    if (!exists("newRoster") || is.null(newRoster) || !is.data.frame(newRoster)) browser()
+    #if (!exists("newRoster") || is.null(newRoster) || !is.data.frame(newRoster)) browser()
     shinyjs::html(id="currentRoster", 
                   paste0("<strong>", basename(rostName), " (",
                          N, " students)</strong>"))
@@ -555,7 +557,7 @@ function(input, output, session) {
                          #choiceNames="(none)", choiceValues="(none)",
                          #selected="(none)")
     } else {
-      browser()
+      #browser()
       runFile = currentFiles$runDf$outName
       files = c(runFile,
                 currentFiles$reqDf$outName[currentFiles$reqDf$directory == "."],
