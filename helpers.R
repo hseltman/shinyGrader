@@ -279,8 +279,8 @@ getRoster = function(rosterFileName, instructorEmail="") {
   fake = FAKE_INSTRUCTOR_ROSTER
   if (instructorEmail!="") {
     fake[["Email"]] = instructorEmail
-    fake[["shortEmail"]] = gsub("@.*", "", fake[["Email"]])
   }
+  fake[["shortEmail"]] = gsub("@.*", "", fake[["Email"]])
   fake$selectText = I(makeSelectText(fake$Name, fake$shortEmail, fake$CanvasName))
   
   #if (is.null(rosterFileName) || rosterFileName == "") {
