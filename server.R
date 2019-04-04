@@ -466,7 +466,14 @@ function(input, output, session) {
   observeEvent(input$outerTabs, {
     this = input$outerTabs
     last = lastTab()
-    studentInfo = roster$roster[as.numeric(input$selectStudent), ]
+    # Somehow input$selectStudent can be NULL
+    who = input$selectStudent
+    if (!is.null(who)) {
+      which = as.numeric(who)
+    } else {
+      which = 1
+    }
+    studentInfo = roster$roster[which, ]
 
     if (last == "Problems") {
       isDirty = sapply(1:PROBLEM_COUNT,
